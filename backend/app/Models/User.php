@@ -4,13 +4,20 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
+/**
+ * User Model
+ *
+ * Represents a customer or admin user account in the e-commerce system.
+ * Supports authentication, profile management, and soft deletes.
+ */
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, SoftDeletes;
 
     /**
      * The attributes that are mass assignable.
@@ -18,9 +25,13 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'name',
         'email',
-        'password',
+        'password_hash',
+        'first_name',
+        'last_name',
+        'phone',
+        'is_active',
+        'email_verified_at',
     ];
 
     /**
@@ -29,7 +40,7 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $hidden = [
-        'password',
+        'password_hash',
         'remember_token',
     ];
 
@@ -42,7 +53,55 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'is_active' => 'boolean',
         ];
+    }
+
+    /**
+     * Get the password attribute for authentication.
+     */
+    public function getAuthPassword()
+    {
+        return $this->password_hash;
+    }
+
+    /**
+     * Get all addresses for this user.
+     */
+    public function addresses()
+    {
+        return $this->hasMany(\App\Models\User\Address::class);
+    }
+
+    /**
+     * Get the default billing address.
+     */
+    public function defaultBillingAddress()
+    {
+        return $this->hasOne(\App\Models\User\Address::class)->where('is_default_billing', true);
+    }
+
+    /**
+     * Get the default shipping address.
+     */
+    public function defaultShippingAddress()
+    {
+        return $this->hasOne(\App\Models\User\Address::class)->where('is_default_shipping', true);
+    }
+
+    /**
+     * Get all carts for this user.
+     */
+    public function carts()
+    {
+        return $this->hasMany(\App\Models\Order\Cart::class);
+    }
+
+    /**
+     * Get all orders for this user.
+     */
+    public function orders()
+    {
+        return $this->hasMany(\App\Models\Order\Order::class);
     }
 }
