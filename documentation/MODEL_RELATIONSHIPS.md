@@ -1,270 +1,323 @@
 # Model Relationships Quick Reference
 
-This document provides a visual overview of all model relationships in the e-commerce system.
+## Model Count: 28
 
-## Relationship Legend
-- `→` = belongsTo (many-to-one)
-- `←` = hasMany (one-to-many)
-- `↔` = belongsToMany (many-to-many)
-- `⊙` = hasOne (one-to-one)
+**Organized by Domain:**
+- User/Admin: 2 models (User, Administrator)
+- Catalog: 4 models (Brand, Category, Product, ProductImage)
+- Attributes: 4 models (Attribute, AttributeValue, ProductVariant, VariantAttributeValue)
+- Inventory: 6 models (Warehouse, InventoryItem, InventoryMovement, InventoryAdjustment, Transfer, TransferItem)
+- Pricing: 2 models (PriceList, PriceListItem)
+- Orders: 7 models (Cart, CartItem, Order, OrderItem, Payment, Fulfillment, FulfillmentItem)
+- Content: 2 models (ProductFile, ProductMeta)
+- User Address: 1 model (Address)
 
-## 1. User & Address Relationships
+---
 
-```
-User
-  ← addresses (Address)
-  ⊙ defaultBillingAddress (Address where is_default_billing = true)
-  ⊙ defaultShippingAddress (Address where is_default_shipping = true)
-  ← carts (Cart)
-  ← orders (Order)
-
-Address
-  → user (User)
-  ← ordersAsBillingAddress (Order via billing_address_id)
-  ← ordersAsShippingAddress (Order via shipping_address_id)
-```
-
-## 2. Catalog Relationships
+## Visual Relationship Map
 
 ```
-Brand
-  ← products (Product)
+┌─────────────────────────────────────────────────────────────┐
+│                      USER MANAGEMENT                         │
+├─────────────────────────────────────────────────────────────┤
+│  ┌──────────┐                                              │
+│  │   User   │ (Customers)                                  │
+│  │  (users) │                                              │
+│  └────┬─────┘                                              │
+│       │                                                     │
+│       ├── addresses                                         │
+│       ├── carts                                             │
+│       └── orders                                            │
+│                                                             │
+│  ┌──────────────┐                                           │
+│  │Administrator│ (Staff/Admins)                            │
+│  │(administrator│                                           │
+│  └─────┬───────┘                                           │
+│        │                                                     │
+│        ├── inventory_movements.performed_by                 │
+│        ├── inventory_adjustments.performed_by               │
+│        └── transfers.created_by                             │
+└─────────────────────────────────────────────────────────────┘
 
-Category
-  → parent (Category - self-referential)
-  ← children (Category - self-referential)
-  ↔ products (Product via product_categories)
+┌─────────────────────────────────────────────────────────────┐
+│                      CATALOG MANAGEMENT                     │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌────────┐           ┌────────────┐                      │
+│  │ Brand  │           │  Category  │                      │
+│  └───┬────┘           └──────┬─────┘                      │
+│      │                        │                            │
+│      │                        ├──┬──────┐                  │
+│      │                        │Parent │ Children           │
+│      │                        └──┴──────┘                  │
+│      │                        │                            │
+│      └──────────┬─────────────┘                            │
+│                 ▼                                          │
+│              ┌─────────┐                                    │
+│              │ Product │                                    │
+│              └────┬────┘                                    │
+│                   │                                         │
+│         ┌─────────┼─────────┐                             │
+│         │         │         │                             │
+│         ▼         ▼         ▼                             │
+│    ┌────────┐ ┌─────────┐ ┌──────────┐                   │
+│    │ Image  │ │ Product │ │  Variant │                   │
+│    │        │ │   File  │ │ (SKU)    │                   │
+│    └────────┘ └─────────┘ └────┬─────┘                   │
+│                                │                          │
+│                                ├── inventory_items        │
+│                                ├── cart_items            │
+│                                ├── order_items           │
+│                                └── price_list_items      │
+└──────────────────────────────────────────────────────────┘
 
-Product
-  → brand (Brand)
-  ↔ categories (Category via product_categories)
-  ← images (ProductImage)
-  ⊙ primaryImage (ProductImage where is_primary = true)
-  ← variants (ProductVariant)
-  ↔ attributeValues (AttributeValue via product_attribute_values)
-  ← files (ProductFile)
-  ← meta (ProductMeta)
-
-ProductImage
-  → product (Product)
+┌─────────────────────────────────────────────────────────────┐
+│                    INVENTORY MANAGEMENT                      │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────┐                                              │
+│  │Warehouse │                                              │
+│  └────┬─────┘                                              │
+│       │                                                     │
+│       ├── inventory_items                                   │
+│       ├── inventory_movements                              │
+│       ├── inventory_adjustments                            │
+│       ├── transfers.from_warehouse_id                      │
+│       └── transfers.to_warehouse_id                        │
+│                                                             │
+│  inventory_items                                            │
+│    ├── variant_id ──────────┐                             │
+│    └── warehouse_id ────────┤                             │
+│                              │                             │
+│  inventory_movements (LEDGER)                               │
+│    ├── variant_id ──────────┐                             │
+│    ├── warehouse_id ─────────┤                             │
+│    └── performed_by ────────▶ Administrator               │
+│                                                             │
+│  transfers                                                  │
+│    ├── from_warehouse_id                                    │
+│    ├── to_warehouse_id                                      │
+│    ├── created_by ─────────▶ Administrator                │
+│    └── items                                                │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-## 3. Attribute & Variant Relationships
+---
 
-```
-Attribute
-  ← values (AttributeValue)
-  ← variantAttributeValues (VariantAttributeValue)
+## Complete Model List
 
-AttributeValue
-  → attribute (Attribute)
-  ↔ products (Product via product_attribute_values)
-  ← variantAttributeValues (VariantAttributeValue)
+### 1. User Management (3 models)
 
-ProductVariant
-  → product (Product)
-  ← attributeValues (VariantAttributeValue)
-  ← inventoryItems (InventoryItem)
-  ← inventoryMovements (InventoryMovement)
-  ← priceListItems (PriceListItem)
-  ← cartItems (CartItem)
-  ← orderItems (OrderItem)
-  ← transferItems (TransferItem)
+**User** (`App\Models\User`)
+- Belongs to: None
+- Has many: `addresses`, `carts`, `orders`
+- Soft deletes: Yes
+- Purpose: Customer accounts
 
-VariantAttributeValue (Pivot Model)
-  → variant (ProductVariant)
-  → attribute (Attribute)
-  → attributeValue (AttributeValue)
-```
+**Administrator** (`App\Models\Administrator`)
+- Belongs to: None
+- Has many: None (referenced by others)
+- Soft deletes: Yes
+- Purpose: Staff/admin accounts
 
-## 4. Inventory Relationships
+**Address** (`App\Models\User\Address`)
+- Belongs to: `user`
+- Has many: `ordersAsBillingAddress`, `ordersAsShippingAddress`
+- Soft deletes: No
+- Purpose: User shipping/billing addresses
 
-```
-Warehouse
-  ← inventoryItems (InventoryItem)
-  ← inventoryMovements (InventoryMovement)
-  ← inventoryAdjustments (InventoryAdjustment)
-  ← transfersFrom (Transfer via from_warehouse_id)
-  ← transfersTo (Transfer via to_warehouse_id)
+---
 
-InventoryItem
-  → variant (ProductVariant)
-  → warehouse (Warehouse)
+### 2. Catalog (4 models)
 
-InventoryMovement
-  → variant (ProductVariant)
-  → warehouse (Warehouse)
-  → performedBy (User)
+**Brand** (`App\Models\Catalog\Brand`)
+- Belongs to: None
+- Has many: `products`
 
-InventoryAdjustment
-  → variant (ProductVariant)
-  → warehouse (Warehouse)
-  → performedBy (User)
+**Category** (`App\Models\Catalog\Category`)
+- Belongs to: `parent` (self-reference)
+- Has many: `children` (self-reference), `products` (many-to-many)
+- Purpose: Hierarchical categories
 
-Transfer
-  → fromWarehouse (Warehouse)
-  → toWarehouse (Warehouse)
-  → createdBy (User)
-  ← items (TransferItem)
+**Product** (`App\Models\Catalog\Product`)
+- Belongs to: `brand`, `categories` (many-to-many)
+- Has many: `categories` (many-to-many), `images`, `variants`, `attributeValues` (many-to-many), `files`, `meta`
+- Soft deletes: Yes
 
-TransferItem
-  → transfer (Transfer)
-  → variant (ProductVariant)
-```
+**ProductImage** (`App\Models\Catalog\ProductImage`)
+- Belongs to: `product`
+- Purpose: Product images
 
-## 5. Pricing Relationships
+---
 
-```
-PriceList
-  ← items (PriceListItem)
+### 3. Attributes & Variants (4 models)
 
-PriceListItem
-  → priceList (PriceList)
-  → variant (ProductVariant)
-```
+**Attribute** (`App\Models\Attribute\Attribute`)
+- Belongs to: None
+- Has many: `values`, `variantAttributeValues`
+- Purpose: Product attributes (Color, Size, etc.)
 
-## 6. Order Relationships
+**AttributeValue** (`App\Models\Attribute\AttributeValue`)
+- Belongs to: `attribute`
+- Has many: `products` (many-to-many), `variantAttributeValues`
+- Purpose: Attribute values (Red, Large, etc.)
 
-```
-Cart
-  → user (User)
-  ← items (CartItem)
+**ProductVariant** (`App\Models\Attribute\ProductVariant`)
+- Belongs to: `product`
+- Has many: `attributeValues`, `inventoryItems`, `inventoryMovements`, `priceListItems`, `cartItems`, `orderItems`
+- Soft deletes: Yes
+- Purpose: SKU-level variations
 
-CartItem
-  → cart (Cart)
-  → variant (ProductVariant)
+**VariantAttributeValue** (`App\Models\Attribute\VariantAttributeValue`)
+- Belongs to: `variant`, `attribute`, `attributeValue`
+- Purpose: Pivot table for variant attributes
 
-Order
-  → user (User)
-  → billingAddress (Address)
-  → shippingAddress (Address)
-  ← items (OrderItem)
-  ← payments (Payment)
-  ← fulfillments (Fulfillment)
+---
 
-OrderItem
-  → order (Order)
-  → variant (ProductVariant)
-  ← fulfillmentItems (FulfillmentItem)
+### 4. Inventory (6 models)
 
-Payment
-  → order (Order)
+**Warehouse** (`App\Models\Inventory\Warehouse`)
+- Belongs to: None
+- Has many: `inventoryItems`, `inventoryMovements`, `inventoryAdjustments`, `transfersFrom`, `transfersTo`
 
-Fulfillment
-  → order (Order)
-  ← items (FulfillmentItem)
+**InventoryItem** (`App\Models\Inventory\InventoryItem`)
+- Belongs to: `variant`, `warehouse`
+- Computed: `available` attribute (on_hand - reserved)
+- Methods: `isBelowSafetyStock()`, `needsReorder()`
 
-FulfillmentItem
-  → fulfillment (Fulfillment)
-  → orderItem (OrderItem)
-```
+**InventoryMovement** (`App\Models\Inventory\InventoryMovement`)
+- Belongs to: `variant`, `warehouse`, `performedBy` (Administrator)
+- Methods: `isIncoming()`, `isOutgoing()`
+- Purpose: Immutable audit trail
 
-## 7. Content Relationships
+**InventoryAdjustment** (`App\Models\Inventory\InventoryAdjustment`)
+- Belongs to: `variant`, `warehouse`, `performedBy` (Administrator)
+- Purpose: Manual stock corrections
 
-```
-ProductFile
-  → product (Product)
+**Transfer** (`App\Models\Inventory\Transfer`)
+- Belongs to: `fromWarehouse`, `toWarehouse`, `createdBy` (Administrator)
+- Has many: `items`
+- Methods: `isDraft()`, `isInTransit()`, `isReceived()`, `isCanceled()`
 
-ProductMeta
-  → product (Product)
-```
+**TransferItem** (`App\Models\Inventory\TransferItem`)
+- Belongs to: `transfer`, `variant`
 
-## Complete Relationship Map
+---
 
-```
-                                    ┌─────────────┐
-                                    │    User     │
-                                    └──────┬──────┘
-                                           │
-                    ┌──────────────────────┼──────────────────────┐
-                    │                      │                      │
-                    ▼                      ▼                      ▼
-              ┌──────────┐           ┌─────────┐           ┌─────────┐
-              │ Address  │           │  Cart   │           │  Order  │
-              └────┬─────┘           └────┬────┘           └────┬────┘
-                   │                      │                     │
-                   │                  ┌───┴────┐           ┌────┼────┐
-                   │                  ▼        │           │    │    │
-                   │            ┌──────────┐   │           ▼    ▼    ▼
-                   │            │CartItem  │   │      ┌────────┬──────┬─────────┐
-                   │            └────┬─────┘   │      │OrderIt.│Paymnt│Fulfill. │
-                   │                 │         │      └────┬───┴──────┴────┬────┘
-                   │                 │         │           │                │
-                   └─────────────────┼─────────┘           │                ▼
-                                     │                     │         ┌──────────────┐
-                                     ▼                     │         │FulfillmentIt.│
-                              ┌─────────────┐             │         └──────────────┘
-                              │   Variant   │◄────────────┘
-                              └──────┬──────┘
-                                     │
-         ┌───────────────────────────┼───────────────────────────┐
-         │                           │                           │
-         ▼                           ▼                           ▼
-    ┌─────────┐              ┌─────────────┐           ┌──────────────┐
-    │Inventory│              │ VariantAttr │           │ PriceListIt. │
-    │  Item   │              │    Value    │           └──────────────┘
-    └─────────┘              └──────┬──────┘
-         │                          │
-         ▼                          ▼
-    ┌─────────┐              ┌─────────────┐
-    │Warehouse│              │AttributeVal.│
-    └─────────┘              └──────┬──────┘
-                                    │
-                                    ▼
-                              ┌──────────┐
-                              │Attribute │
-                              └──────────┘
+### 5. Pricing (2 models)
 
-    ┌─────────┐         ┌──────────┐         ┌──────────┐
-    │  Brand  │◄────────┤ Product  │────────►│ Category │
-    └─────────┘         └────┬─────┘         └────┬─────┘
-                             │                    │
-                    ┌────────┼────────┐           │ (self-ref)
-                    │        │        │           │
-                    ▼        ▼        ▼           ▼
-              ┌────────┬────────┬────────┐  ┌─────────┐
-              │Product │Product │Product │  │ Parent  │
-              │ Image  │  File  │  Meta  │  │Category │
-              └────────┴────────┴────────┘  └─────────┘
-```
+**PriceList** (`App\Models\Pricing\PriceList`)
+- Belongs to: None
+- Has many: `items`
+- Purpose: Custom pricing schedules
 
-## Cascade Delete Rules
+**PriceListItem** (`App\Models\Pricing\PriceListItem`)
+- Belongs to: `priceList`, `variant`
+- Purpose: Variant-specific prices
 
-### CASCADE (child data deleted with parent)
-- Product → ProductImage
-- Product → ProductVariant
-- Product → ProductFile
-- Product → ProductMeta
-- Product → product_categories (pivot)
-- Attribute → AttributeValue
-- Category → category (self-referential parent)
-- ProductVariant → variant_attribute_values (pivot)
-- Cart → CartItem
-- Order → OrderItem
-- Order → Payment
-- Order → Fulfillment
-- Fulfillment → FulfillmentItem
-- Warehouse → InventoryItem
-- Transfer → TransferItem
-- PriceList → PriceListItem
+---
 
-### RESTRICT (prevents deletion if children exist)
-- Brand → Product (cannot delete brand if products exist)
-- Category → product_categories (cannot delete category if products linked)
-- ProductVariant → CartItem (cannot delete variant if in carts)
-- ProductVariant → OrderItem (cannot delete variant if in orders)
-- Warehouse → Transfer (cannot delete warehouse if transfers exist)
+### 6. Orders (7 models)
 
-### SET NULL (foreign key set to null on parent delete)
-- User → Address (addresses persist without user)
-- Brand → Product (products persist without brand)
-- Category → Category parent (categories persist without parent)
+**Cart** (`App\Models\Order\Cart`)
+- Belongs to: `user`
+- Has many: `items`
+- Methods: `isOpen()`, `isConverted()`, `isAbandoned()`
+- Computed: `subtotal`
 
-## Common Query Patterns
+**CartItem** (`App\Models\Order\CartItem`)
+- Belongs to: `cart`, `variant`
+- Computed: `lineTotal`
 
-### Get Product with All Related Data
+**Order** (`App\Models\Order\Order`)
+- Belongs to: `user`, `billingAddress`, `shippingAddress`
+- Has many: `items`, `payments`, `fulfillments`
+- Methods: `isPending()`, `isPaid()`, `isFulfilled()`, `isCanceled()`, `isRefunded()`
+
+**OrderItem** (`App\Models\Order\OrderItem`)
+- Belongs to: `order`, `variant`
+- Has many: `fulfillmentItems`
+- Purpose: Snapshots product data at order time
+
+**Payment** (`App\Models\Order\Payment`)
+- Belongs to: `order`
+- Methods: `isPending()`, `isAuthorized()`, `isCaptured()`, `isFailed()`, `isRefunded()`, `isCashOnDelivery()`, `isOnlinePayment()`
+- Computed: `getProviderDisplayName()`
+
+**Fulfillment** (`App\Models\Order\Fulfillment`)
+- Belongs to: `order`
+- Has many: `items`
+- Methods: `isPending()`, `isPacked()`, `isShipped()`, `isDelivered()`, `isCanceled()`
+
+**FulfillmentItem** (`App\Models\Order\FulfillmentItem`)
+- Belongs to: `fulfillment`, `orderItem`
+- Purpose: Links order items to shipments (partial fulfillment support)
+
+---
+
+### 7. Content (2 models)
+
+**ProductFile** (`App\Models\Content\ProductFile`)
+- Belongs to: `product`
+- Purpose: Downloadable files (manuals, certificates)
+
+**ProductMeta** (`App\Models\Content\ProductMeta`)
+- Belongs to: `product`
+- Purpose: Custom key-value metadata
+
+---
+
+## Key Design Patterns
+
+### 1. Immutable Ledger (inventory_movements)
+- **Never edit** existing movements
+- Always create **compensating entries**
+- Complete audit trail for all stock changes
+
+### 2. Snapshot Pattern (order_items, cart_items)
+- Capture product details at order time
+- Prevent data changes from affecting historical orders
+- Fields: `product_name`, `variant_sku`, `unit_price`
+
+### 3. Soft Deletes
+- **Users** (customers): Soft deletes
+- **Administrators** (staff): Soft deletes  
+- **Products**: Soft deletes
+- **ProductVariants**: Soft deletes
+
+### 4. Role-Based Separation
+- **Users**: Customer operations only
+- **Administrators**: Staff operations only
+- Clear separation via different tables and relationships
+
+---
+
+## Foreign Key Summary
+
+### CASCADE (Child deleted with parent)
+- Product → images, variants, categories, files, meta
+- Order → items, payments, fulfillments
+- Fulfillment → items
+- Transfer → items
+- Cart → items
+
+### RESTRICT (Prevent deletion if children exist)
+- Brand → products
+- Category → products
+- ProductVariant → cart_items, order_items
+
+### SET NULL (Set foreign key to null on parent delete)
+- User → addresses
+- Address → orders (billing/shipping)
+- Administrator → inventory operations
+
+---
+
+## Usage Examples
+
+### Get Product with All Relations
 ```php
-Product::with([
+$product = Product::with([
     'brand',
     'categories',
     'images',
@@ -275,19 +328,17 @@ Product::with([
 ])->find($productId);
 ```
 
-### Get Variant with Inventory
+### Check Inventory by Admin
 ```php
-ProductVariant::with([
-    'product',
-    'inventoryItems.warehouse',
-    'attributeValues.attribute',
-    'attributeValues.attributeValue'
-])->find($variantId);
+$movement = InventoryMovement::with(['performedBy'])
+    ->find($movementId);
+
+echo $movement->performedBy->full_name;  // Admin who did it
 ```
 
-### Get Order with Complete Details
+### Get Order with All Details
 ```php
-Order::with([
+$order = Order::with([
     'user',
     'billingAddress',
     'shippingAddress',
@@ -297,63 +348,33 @@ Order::with([
 ])->find($orderId);
 ```
 
-### Get Inventory Movements with References
+### Track Inventory Changes
 ```php
-InventoryMovement::with([
+$movements = InventoryMovement::with([
     'variant.product',
     'warehouse',
-    'performedBy'
+    'performedBy'  // Administrator
 ])
 ->where('variant_id', $variantId)
 ->orderBy('performed_at', 'desc')
 ->get();
 ```
 
-### Get Categories with Products
-```php
-Category::with([
-    'products.brand',
-    'products.primaryImage',
-    'children'
-])->whereNull('parent_id')->get();
-```
+---
 
-## Performance Tips
+## Key Business Rules
 
-1. **Eager Loading**: Always use `with()` to avoid N+1 query problems
-2. **Select Specific Columns**: Use `select()` to load only needed fields
-3. **Pagination**: Use `paginate()` for large datasets
-4. **Indexing**: Ensure foreign keys and frequently queried columns are indexed
-5. **Chunk Processing**: Use `chunk()` for processing large datasets
-6. **Query Scopes**: Create reusable query scopes in models
+1. **Published products** must have at least one active variant
+2. **Available stock** = `on_hand - reserved` (must not drop below zero unless `allow_backorder=true`)
+3. **All inventory changes** create an `inventory_movements` record
+4. **Never edit movements** - create compensating entries
+5. **Order items snapshot** product data at order time
+6. **Only administrators** can perform inventory operations
 
-## Example Scopes
+---
 
-Add these to your models for reusable queries:
-
-```php
-// In Product model
-public function scopePublished($query)
-{
-    return $query->where('published_status', 'published')
-                 ->where('is_active', true);
-}
-
-// In ProductVariant model
-public function scopeActive($query)
-{
-    return $query->where('status', 'active');
-}
-
-// In Order model
-public function scopePending($query)
-{
-    return $query->where('status', 'pending');
-}
-
-// Usage:
-$products = Product::published()->with('variants')->get();
-$variants = ProductVariant::active()->get();
-$orders = Order::pending()->with('items')->get();
-```
+**Last Updated:** October 27, 2025  
+**Status:** Complete & Production Ready  
+**Total Models:** 28  
+**Total Tables:** 32
 
