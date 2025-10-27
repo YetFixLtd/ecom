@@ -44,11 +44,11 @@ class Transfer extends Model
     }
 
     /**
-     * Get the user who created this transfer.
+     * Get the administrator who created this transfer.
      */
     public function createdBy()
     {
-        return $this->belongsTo(\App\Models\User::class, 'created_by');
+        return $this->belongsTo(\App\Models\Administrator::class, 'created_by');
     }
 
     /**

@@ -71,10 +71,10 @@ class InventoryAdjustment extends Model
     }
 
     /**
-     * Get the user who performed this adjustment.
+     * Get the administrator who performed this adjustment.
      */
     public function performedBy()
     {
-        return $this->belongsTo(\App\Models\User::class, 'performed_by');
+        return $this->belongsTo(\App\Models\Administrator::class, 'performed_by');
     }
 }

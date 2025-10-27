@@ -37,7 +37,7 @@ return new class extends Migration
             $table->decimal('unit_cost', 12, 2)->nullable()->comment('For COGS calculation');
             $table->string('reason_code', 64)->nullable()->comment('e.g., DAMAGED, LOST, COUNT_CORRECTION');
             $table->string('note', 500)->nullable();
-            $table->foreignId('performed_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('performed_by')->nullable()->constrained('administrators')->nullOnDelete();
             $table->timestamp('performed_at')->useCurrent();
             $table->timestamp('created_at')->useCurrent();
 

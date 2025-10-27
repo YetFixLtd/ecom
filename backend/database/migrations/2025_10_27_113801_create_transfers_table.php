@@ -19,7 +19,7 @@ return new class extends Migration
             $table->foreignId('from_warehouse_id')->constrained('warehouses')->restrictOnDelete();
             $table->foreignId('to_warehouse_id')->constrained('warehouses')->restrictOnDelete();
             $table->enum('status', ['draft', 'in_transit', 'received', 'canceled'])->default('draft');
-            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('created_by')->nullable()->constrained('administrators')->nullOnDelete();
             $table->timestamps();
         });
     }

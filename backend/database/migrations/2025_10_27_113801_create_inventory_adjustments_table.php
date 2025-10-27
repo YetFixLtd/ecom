@@ -26,7 +26,7 @@ return new class extends Migration
             $table->decimal('unit_cost', 12, 2)->nullable();
             $table->string('reason_code', 64)->nullable()->comment('e.g., DAMAGED, LOST, COUNT_CORRECTION');
             $table->text('note')->nullable();
-            $table->foreignId('performed_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('performed_by')->nullable()->constrained('administrators')->nullOnDelete();
             $table->timestamp('performed_at')->useCurrent();
             $table->timestamp('created_at')->useCurrent();
 
