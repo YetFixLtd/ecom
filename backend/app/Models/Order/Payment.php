@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
  * Payment Model
  *
  * Represents a payment transaction for an order.
- * Supports multiple payment providers (Stripe, bKash, Nagad, etc.).
+ * Supports multiple payment providers (Stripe, bKash, Nagad, COD, SSL Commerce, etc.).
  */
 class Payment extends Model
 {
@@ -89,5 +89,37 @@ class Payment extends Model
     public function isRefunded(): bool
     {
         return $this->status === 'refunded';
+    }
+
+    /**
+     * Check if this is a Cash on Delivery payment.
+     */
+    public function isCashOnDelivery(): bool
+    {
+        return $this->provider === 'cod';
+    }
+
+    /**
+     * Check if this is an online payment (not COD).
+     */
+    public function isOnlinePayment(): bool
+    {
+        return !$this->isCashOnDelivery();
+    }
+
+    /**
+     * Get display name for the payment provider.
+     */
+    public function getProviderDisplayName(): string
+    {
+        return match ($this->provider) {
+            'cod' => 'Cash on Delivery',
+            'bkash' => 'bKash',
+            'nagad' => 'Nagad',
+            'ssl_commerz' => 'SSL Commerce',
+            'stripe' => 'Credit/Debit Card',
+            'bank_transfer' => 'Bank Transfer',
+            default => ucfirst($this->provider),
+        };
     }
 }
