@@ -11,8 +11,9 @@ use Illuminate\Notifications\Notifiable;
 /**
  * User Model
  *
- * Represents a customer or admin user account in the e-commerce system.
+ * Represents a customer account in the e-commerce system.
  * Supports authentication, profile management, and soft deletes.
+ * For staff/admins, use the Administrator model instead.
  */
 class User extends Authenticatable
 {
