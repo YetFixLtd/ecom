@@ -3,6 +3,11 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\Admin\AdminAuthController;
 use App\Http\Controllers\Api\Admin\AdminManagementController;
+use App\Http\Controllers\Api\Admin\BrandController;
+use App\Http\Controllers\Api\Admin\CategoryController;
+use App\Http\Controllers\Api\Admin\ProductController;
+use App\Http\Controllers\Api\Admin\AttributeController;
+use App\Http\Controllers\Api\Admin\MediaController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -62,6 +67,58 @@ Route::prefix('v1')->group(function () {
             Route::delete('/administrators/{id}', [AdminManagementController::class, 'destroy'])->name('api.admin.administrators.destroy');
             Route::post('/administrators/{id}/activate', [AdminManagementController::class, 'activate'])->name('api.admin.administrators.activate');
             Route::post('/administrators/{id}/deactivate', [AdminManagementController::class, 'deactivate'])->name('api.admin.administrators.deactivate');
+        });
+
+        // ========================================
+        // Admin Catalog Management Routes
+        // ========================================
+
+        // Catalog routes (super_admin and admin)
+        Route::middleware(['auth:admin_sanctum', 'admin.active', 'admin.role:super_admin,admin'])->group(function () {
+            // Brands
+            Route::apiResource('brands', BrandController::class)->names([
+                'index' => 'api.admin.brands.index',
+                'store' => 'api.admin.brands.store',
+                'show' => 'api.admin.brands.show',
+                'update' => 'api.admin.brands.update',
+                'destroy' => 'api.admin.brands.destroy',
+            ]);
+
+            // Categories
+            Route::apiResource('categories', CategoryController::class)->names([
+                'index' => 'api.admin.categories.index',
+                'store' => 'api.admin.categories.store',
+                'show' => 'api.admin.categories.show',
+                'update' => 'api.admin.categories.update',
+                'destroy' => 'api.admin.categories.destroy',
+            ]);
+
+            // Attributes
+            Route::apiResource('attributes', AttributeController::class)->names([
+                'index' => 'api.admin.attributes.index',
+                'store' => 'api.admin.attributes.store',
+                'show' => 'api.admin.attributes.show',
+                'update' => 'api.admin.attributes.update',
+                'destroy' => 'api.admin.attributes.destroy',
+            ]);
+
+            // Products
+            Route::get('/products', [ProductController::class, 'index'])->name('api.admin.products.index');
+            Route::post('/products', [ProductController::class, 'store'])->name('api.admin.products.store');
+            Route::get('/products/{id}', [ProductController::class, 'show'])->name('api.admin.products.show');
+            Route::put('/products/{id}', [ProductController::class, 'update'])->name('api.admin.products.update');
+            Route::patch('/products/{id}', [ProductController::class, 'update'])->name('api.admin.products.patch');
+            Route::delete('/products/{id}', [ProductController::class, 'destroy'])->name('api.admin.products.destroy');
+
+            // Product-specific operations
+            Route::put('/products/{id}/pricing', [ProductController::class, 'updatePricing'])->name('api.admin.products.pricing.update');
+            Route::put('/products/{id}/inventory', [ProductController::class, 'updateInventory'])->name('api.admin.products.inventory.update');
+            Route::put('/products/{id}/attributes', [ProductController::class, 'syncAttributes'])->name('api.admin.products.attributes.sync');
+
+            // Product Images (Media)
+            Route::get('/products/{productId}/images', [MediaController::class, 'indexImages'])->name('api.admin.products.images.index');
+            Route::post('/products/{productId}/images', [MediaController::class, 'storeImage'])->name('api.admin.products.images.store');
+            Route::delete('/products/{productId}/images/{imageId}', [MediaController::class, 'destroyImage'])->name('api.admin.products.images.destroy');
         });
     });
 });
