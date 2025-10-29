@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 /**
  * Administrator Model
@@ -16,7 +17,7 @@ use Illuminate\Notifications\Notifiable;
  */
 class Administrator extends Authenticatable
 {
-    use HasFactory, Notifiable, SoftDeletes;
+    use HasFactory, HasApiTokens, Notifiable, SoftDeletes;
 
     /**
      * The table associated with the model.
@@ -128,5 +129,48 @@ class Administrator extends Authenticatable
     public function scopeRole($query, string $role)
     {
         return $query->where('role', $role);
+    }
+
+    /**
+     * Check if administrator has any of the given roles.
+     *
+     * @param string ...$roles
+     * @return bool
+     */
+    public function hasRole(string ...$roles): bool
+    {
+        return in_array($this->role, $roles);
+    }
+
+    /**
+     * Check if administrator has any of the given roles.
+     * (Alias for hasRole for better readability)
+     *
+     * @param string ...$roles
+     * @return bool
+     */
+    public function hasAnyRole(string ...$roles): bool
+    {
+        return $this->hasRole(...$roles);
+    }
+
+    /**
+     * Check if administrator can perform an action.
+     * Super admins can do everything.
+     *
+     * @param  iterable|string  $abilities
+     * @param  array|mixed  $arguments
+     * @return bool
+     */
+    public function can($abilities, $arguments = []): bool
+    {
+        // Super admin has all permissions
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        // Future: Implement granular permissions system here
+        // For now, use role-based hierarchy
+        return parent::can($abilities, $arguments);
     }
 }

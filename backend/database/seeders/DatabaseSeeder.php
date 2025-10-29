@@ -15,6 +15,13 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Create default super admin (required for admin functionality)
+        // This is the only way to create the initial admin account.
+        // After this, only super_admin can create other administrators.
+        $this->call([
+            AdministratorSeeder::class,
+        ]);
+
         // User::factory(10)->create();
 
         User::factory()->create([
