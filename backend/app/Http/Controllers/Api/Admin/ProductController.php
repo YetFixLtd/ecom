@@ -132,7 +132,8 @@ class ProductController extends Controller
             if (!empty($variants)) {
                 foreach ($variants as $variantData) {
                     $attributeValues = $variantData['attribute_values'] ?? [];
-                    unset($variantData['attribute_values']);
+                    $inventoryData = $variantData['inventory'] ?? [];
+                    unset($variantData['attribute_values'], $variantData['inventory']);
 
                     $variant = ProductVariant::create(array_merge($variantData, [
                         'product_id' => $product->id,
@@ -149,6 +150,32 @@ class ProductController extends Controller
                             'attribute_id' => $av['attribute_id'],
                             'attribute_value_id' => $av['attribute_value_id'],
                         ]);
+                    }
+
+                    // Create inventory items if provided and track_stock is true
+                    if (!empty($inventoryData) && $variant->track_stock) {
+                        foreach ($inventoryData as $inv) {
+                            $inventoryItem = \App\Models\Inventory\InventoryItem::create([
+                                'variant_id' => $variant->id,
+                                'warehouse_id' => $inv['warehouse_id'],
+                                'on_hand' => $inv['on_hand'] ?? 0,
+                                'reserved' => 0,
+                                'safety_stock' => $inv['safety_stock'] ?? 0,
+                                'reorder_point' => $inv['reorder_point'] ?? 0,
+                            ]);
+
+                            // Create movement record for audit trail
+                            \App\Models\Inventory\InventoryMovement::create([
+                                'variant_id' => $variant->id,
+                                'warehouse_id' => $inv['warehouse_id'],
+                                'qty_change' => $inv['on_hand'] ?? 0,
+                                'movement_type' => 'adjustment',
+                                'reference_type' => 'product_creation',
+                                'reference_id' => $product->id,
+                                'performed_by' => $request->user('admin_sanctum')?->id,
+                                'performed_at' => now(),
+                            ]);
+                        }
                     }
                 }
             }
@@ -269,6 +296,9 @@ class ProductController extends Controller
                         }
                     } else {
                         // Create new variant
+                        $inventoryData = $variantData['inventory'] ?? [];
+                        unset($variantData['inventory']);
+
                         $variant = ProductVariant::create(array_merge($variantData, [
                             'product_id' => $product->id,
                             'currency' => $variantData['currency'] ?? 'BDT',
@@ -283,6 +313,32 @@ class ProductController extends Controller
                                 'attribute_id' => $av['attribute_id'],
                                 'attribute_value_id' => $av['attribute_value_id'],
                             ]);
+                        }
+
+                        // Create inventory items if provided and track_stock is true
+                        if (!empty($inventoryData) && $variant->track_stock) {
+                            foreach ($inventoryData as $inv) {
+                                $inventoryItem = \App\Models\Inventory\InventoryItem::create([
+                                    'variant_id' => $variant->id,
+                                    'warehouse_id' => $inv['warehouse_id'],
+                                    'on_hand' => $inv['on_hand'] ?? 0,
+                                    'reserved' => 0,
+                                    'safety_stock' => $inv['safety_stock'] ?? 0,
+                                    'reorder_point' => $inv['reorder_point'] ?? 0,
+                                ]);
+
+                                // Create movement record for audit trail
+                                \App\Models\Inventory\InventoryMovement::create([
+                                    'variant_id' => $variant->id,
+                                    'warehouse_id' => $inv['warehouse_id'],
+                                    'qty_change' => $inv['on_hand'] ?? 0,
+                                    'movement_type' => 'adjustment',
+                                    'reference_type' => 'product_creation',
+                                    'reference_id' => $product->id,
+                                    'performed_by' => $request->user('admin_sanctum')?->id,
+                                    'performed_at' => now(),
+                                ]);
+                            }
                         }
                     }
                 }

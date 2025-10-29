@@ -73,6 +73,13 @@ class ProductStoreRequest extends FormRequest
             'variants.*.attribute_values' => ['required', 'array', 'min:1'],
             'variants.*.attribute_values.*.attribute_id' => ['required', 'integer', 'exists:attributes,id'],
             'variants.*.attribute_values.*.attribute_value_id' => ['required', 'integer', 'exists:attribute_values,id'],
+
+            // Inventory (optional)
+            'variants.*.inventory' => ['nullable', 'array'],
+            'variants.*.inventory.*.warehouse_id' => ['required_with:variants.*.inventory', 'integer', 'exists:warehouses,id'],
+            'variants.*.inventory.*.on_hand' => ['required_with:variants.*.inventory.*.warehouse_id', 'integer', 'min:0'],
+            'variants.*.inventory.*.safety_stock' => ['nullable', 'integer', 'min:0'],
+            'variants.*.inventory.*.reorder_point' => ['nullable', 'integer', 'min:0'],
         ];
     }
 
@@ -111,9 +118,26 @@ class ProductStoreRequest extends FormRequest
                             }
                         }
                     }
+
+                    // Validate inventory data
+                    if (isset($variant['inventory']) && is_array($variant['inventory'])) {
+                        $warehouseIds = [];
+                        foreach ($variant['inventory'] as $invIndex => $inventory) {
+                            // Check for duplicate warehouse_ids
+                            if (isset($inventory['warehouse_id'])) {
+                                if (in_array($inventory['warehouse_id'], $warehouseIds)) {
+                                    $validator->errors()->add(
+                                        "variants.{$variantIndex}.inventory.{$invIndex}.warehouse_id",
+                                        'Duplicate warehouse_id. Each variant can only have one inventory entry per warehouse.'
+                                    );
+                                } else {
+                                    $warehouseIds[] = $inventory['warehouse_id'];
+                                }
+                            }
+                        }
+                    }
                 }
             }
         });
     }
 }
-
