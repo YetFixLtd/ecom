@@ -6,90 +6,23 @@ http://localhost:8000/api/v1
 ```
 
 ## Authentication
-This API will use Laravel Sanctum for authentication. Include the bearer token in the Authorization header:
+
+This API uses Laravel Sanctum for token-based authentication. Include the bearer token in the Authorization header for protected endpoints:
+
 ```
 Authorization: Bearer {token}
 ```
 
----
+**For complete authentication API documentation, see:** [AUTHENTICATION_API.md](AUTHENTICATION_API.md)
 
-## API Endpoints
+### Quick Reference
 
-### Authentication
-
-#### Register User
-```http
-POST /api/v1/auth/register
-```
-
-**Request Body:**
-```json
-{
-  "name": "John Doe",
-  "email": "john@example.com",
-  "password": "password123",
-  "password_confirmation": "password123"
-}
-```
-
-**Response (201):**
-```json
-{
-  "user": {
-    "id": 1,
-    "name": "John Doe",
-    "email": "john@example.com",
-    "created_at": "2025-10-27T00:00:00.000000Z"
-  },
-  "token": "1|laravel_sanctum_token..."
-}
-```
-
----
-
-#### Login
-```http
-POST /api/v1/auth/login
-```
-
-**Request Body:**
-```json
-{
-  "email": "john@example.com",
-  "password": "password123"
-}
-```
-
-**Response (200):**
-```json
-{
-  "user": {
-    "id": 1,
-    "name": "John Doe",
-    "email": "john@example.com"
-  },
-  "token": "1|laravel_sanctum_token..."
-}
-```
-
----
-
-#### Logout
-```http
-POST /api/v1/auth/logout
-```
-
-**Headers:**
-```
-Authorization: Bearer {token}
-```
-
-**Response (200):**
-```json
-{
-  "message": "Logged out successfully"
-}
-```
+- `POST /api/v1/auth/register` - Register new user
+- `POST /api/v1/auth/login` - Login user
+- `POST /api/v1/auth/logout` - Logout (requires authentication)
+- `GET /api/v1/auth/me` - Get current user profile (requires authentication)
+- `PUT /api/v1/auth/profile` - Update profile (requires authentication)
+- `PUT /api/v1/auth/password` - Change password (requires authentication)
 
 ---
 
