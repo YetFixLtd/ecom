@@ -22,3 +22,8 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+composer.lock
+
+# Test database - separate from production database
+/database/testing.sqlite
+/database/testing.sqlite-*
