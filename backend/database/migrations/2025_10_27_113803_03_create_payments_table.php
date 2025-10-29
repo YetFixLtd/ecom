@@ -17,6 +17,7 @@ return new class extends Migration
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('order_id')->constrained('orders')->cascadeOnDelete();
+            $table->foreignId('payment_method_id')->nullable();
             $table->string('provider', 64)->comment('e.g., stripe, bkash, nagad, cod, ssl_commerz');
             $table->string('provider_ref', 191)->nullable()->comment('External transaction ID');
             $table->decimal('amount', 12, 2);

@@ -32,6 +32,7 @@ class Order extends Model
         'grand_total',
         'billing_address_id',
         'shipping_address_id',
+        'shipping_method_id',
         'placed_at',
     ];
 
@@ -74,6 +75,14 @@ class Order extends Model
     public function shippingAddress()
     {
         return $this->belongsTo(\App\Models\User\Address::class, 'shipping_address_id');
+    }
+
+    /**
+     * Get the shipping method for this order.
+     */
+    public function shippingMethod()
+    {
+        return $this->belongsTo(ShippingMethod::class);
     }
 
     /**

@@ -8,7 +8,7 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * Creates the orders table for storing customer orders.
      * Captures order totals, status, and billing/shipping addresses.
      */
@@ -27,6 +27,7 @@ return new class extends Migration
             $table->decimal('grand_total', 12, 2);
             $table->foreignId('billing_address_id')->nullable()->constrained('addresses')->nullOnDelete();
             $table->foreignId('shipping_address_id')->nullable()->constrained('addresses')->nullOnDelete();
+            $table->foreignId('shipping_method_id')->nullable();
             $table->timestamp('placed_at')->nullable();
             $table->timestamps();
         });
