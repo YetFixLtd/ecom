@@ -8,6 +8,12 @@ use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\Admin\ProductController;
 use App\Http\Controllers\Api\Admin\AttributeController;
 use App\Http\Controllers\Api\Admin\MediaController;
+use App\Http\Controllers\Api\Admin\Inventory\WarehouseController;
+use App\Http\Controllers\Api\Admin\Inventory\InventoryItemController;
+use App\Http\Controllers\Api\Admin\Inventory\AdjustmentController;
+use App\Http\Controllers\Api\Admin\Inventory\TransferController;
+use App\Http\Controllers\Api\Admin\Inventory\MovementController;
+use App\Http\Controllers\Api\Admin\Inventory\ReservationController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -119,6 +125,43 @@ Route::prefix('v1')->group(function () {
             Route::get('/products/{productId}/images', [MediaController::class, 'indexImages'])->name('api.admin.products.images.index');
             Route::post('/products/{productId}/images', [MediaController::class, 'storeImage'])->name('api.admin.products.images.store');
             Route::delete('/products/{productId}/images/{imageId}', [MediaController::class, 'destroyImage'])->name('api.admin.products.images.destroy');
+
+            // ========================================
+            // Admin Inventory Management Routes
+            // ========================================
+
+            // Warehouses
+            Route::apiResource('inventory/warehouses', WarehouseController::class)->names([
+                'index' => 'api.admin.inventory.warehouses.index',
+                'store' => 'api.admin.inventory.warehouses.store',
+                'show' => 'api.admin.inventory.warehouses.show',
+                'update' => 'api.admin.inventory.warehouses.update',
+                'destroy' => 'api.admin.inventory.warehouses.destroy',
+            ]);
+
+            // Inventory Items
+            Route::get('/inventory/items', [InventoryItemController::class, 'index'])->name('api.admin.inventory.items.index');
+            Route::get('/inventory/items/{id}', [InventoryItemController::class, 'show'])->name('api.admin.inventory.items.show');
+
+            // Stock Adjustments
+            Route::post('/inventory/adjustments', [AdjustmentController::class, 'store'])->name('api.admin.inventory.adjustments.store');
+
+            // Transfers
+            Route::get('/inventory/transfers', [TransferController::class, 'index'])->name('api.admin.inventory.transfers.index');
+            Route::post('/inventory/transfers', [TransferController::class, 'store'])->name('api.admin.inventory.transfers.store');
+            Route::get('/inventory/transfers/{id}', [TransferController::class, 'show'])->name('api.admin.inventory.transfers.show');
+            Route::put('/inventory/transfers/{id}', [TransferController::class, 'update'])->name('api.admin.inventory.transfers.update');
+            Route::patch('/inventory/transfers/{id}', [TransferController::class, 'update'])->name('api.admin.inventory.transfers.patch');
+            Route::post('/inventory/transfers/{id}/dispatch', [TransferController::class, 'dispatch'])->name('api.admin.inventory.transfers.dispatch');
+            Route::post('/inventory/transfers/{id}/receive', [TransferController::class, 'receive'])->name('api.admin.inventory.transfers.receive');
+            Route::post('/inventory/transfers/{id}/cancel', [TransferController::class, 'cancel'])->name('api.admin.inventory.transfers.cancel');
+
+            // Movements (History)
+            Route::get('/inventory/movements', [MovementController::class, 'index'])->name('api.admin.inventory.movements.index');
+
+            // Reservation/Release
+            Route::post('/inventory/reserve', [ReservationController::class, 'reserve'])->name('api.admin.inventory.reserve');
+            Route::post('/inventory/release', [ReservationController::class, 'release'])->name('api.admin.inventory.release');
         });
     });
 });

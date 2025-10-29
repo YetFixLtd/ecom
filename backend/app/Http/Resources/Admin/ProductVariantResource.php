@@ -31,6 +31,28 @@ class ProductVariantResource extends JsonResource
             'height_mm' => $this->height_mm,
             'status' => $this->status,
             'attribute_values' => VariantAttributeValueResource::collection($this->whenLoaded('attributeValues')),
+            'inventory_summary' => $this->when(
+                ($request->has('with_inventory') || $request->boolean('with_inventory')) && $this->relationLoaded('inventoryItems'),
+                function () {
+                    $items = $this->inventoryItems ?? collect();
+                    return [
+                        'total_on_hand' => $items->sum('on_hand'),
+                        'total_reserved' => $items->sum('reserved'),
+                        'total_available' => $items->sum(function ($item) {
+                            return max(0, $item->on_hand - $item->reserved);
+                        }),
+                        'warehouses' => $items->map(function ($item) {
+                            return [
+                                'warehouse_id' => $item->warehouse_id,
+                                'warehouse_name' => $item->warehouse->name ?? null,
+                                'on_hand' => $item->on_hand,
+                                'reserved' => $item->reserved,
+                                'available' => max(0, $item->on_hand - $item->reserved),
+                            ];
+                        })->values(),
+                    ];
+                }
+            ),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

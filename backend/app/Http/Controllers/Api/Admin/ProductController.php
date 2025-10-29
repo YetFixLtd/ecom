@@ -154,7 +154,11 @@ class ProductController extends Controller
             }
 
             // Load relationships for response
-            $product->load(['brand', 'categories', 'images', 'variants.attributeValues.attribute', 'variants.attributeValues.attributeValue']);
+            $loadRelations = ['brand', 'categories', 'images', 'variants.attributeValues.attribute', 'variants.attributeValues.attributeValue'];
+            if ($request->boolean('with_inventory')) {
+                $loadRelations[] = 'variants.inventoryItems.warehouse';
+            }
+            $product->load($loadRelations);
 
             return (new ProductResource($product))
                 ->response()
@@ -181,7 +185,14 @@ class ProductController extends Controller
         }
 
         if ($request->boolean('with_variants')) {
-            $query->with(['variants.attributeValues.attribute', 'variants.attributeValues.attributeValue']);
+            $loadVariants = ['variants.attributeValues.attribute', 'variants.attributeValues.attributeValue'];
+
+            // If requesting inventory, also load inventory items
+            if ($request->boolean('with_inventory')) {
+                $loadVariants[] = 'variants.inventoryItems.warehouse';
+            }
+
+            $query->with($loadVariants);
         }
 
         $product = $query->firstOrFail();
@@ -278,7 +289,11 @@ class ProductController extends Controller
             }
 
             // Load relationships for response
-            $product->load(['brand', 'categories', 'images', 'variants.attributeValues.attribute', 'variants.attributeValues.attributeValue']);
+            $loadRelations = ['brand', 'categories', 'images', 'variants.attributeValues.attribute', 'variants.attributeValues.attributeValue'];
+            if ($request->boolean('with_inventory')) {
+                $loadRelations[] = 'variants.inventoryItems.warehouse';
+            }
+            $product->load($loadRelations);
 
             return (new ProductResource($product))->response();
         });
