@@ -48,12 +48,9 @@ class ProductStoreRequest extends FormRequest
             'categories' => ['nullable', 'array'],
             'categories.*' => ['integer', 'exists:categories,id'],
 
-            // Images
-            'images' => ['nullable', 'array'],
-            'images.*.url' => ['required_with:images', 'url', 'max:255'],
-            'images.*.alt_text' => ['nullable', 'string', 'max:255'],
-            'images.*.position' => ['nullable', 'integer', 'min:0'],
-            'images.*.is_primary' => ['nullable', 'boolean'],
+            // Images (inline upload, up to 3 files)
+            'images' => ['nullable', 'array', 'max:3'],
+            'images.*' => ['file', 'image', 'mimes:jpeg,png,webp', 'max:5120'],
 
             // Variants (required for variant/bundle types)
             'variants' => ['required_if:product_type,variant', 'array'],

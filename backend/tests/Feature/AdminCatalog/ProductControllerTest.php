@@ -12,6 +12,8 @@ use App\Models\Attribute\ProductVariant;
 use App\Models\Inventory\InventoryItem;
 use App\Models\Inventory\InventoryMovement;
 use App\Models\Inventory\Warehouse;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -43,6 +45,133 @@ class ProductControllerTest extends TestCase
         // Create warehouses for inventory tests
         $this->warehouse = Warehouse::factory()->create();
         $this->warehouse2 = Warehouse::factory()->create();
+    }
+
+    public function test_admin_can_create_product_with_inline_images(): void
+    {
+        Storage::fake('public');
+
+        $brand = Brand::factory()->create();
+        $category = Category::factory()->create();
+
+        $file1 = UploadedFile::fake()->image('a.jpg', 1200, 900);
+        $file2 = UploadedFile::fake()->image('b.png', 600, 600);
+
+        $data = [
+            'name' => 'Product With Images',
+            'slug' => 'product-with-images',
+            'product_type' => 'simple',
+            'brand_id' => $brand->id,
+            'categories' => [$category->id],
+            'images' => [$file1, $file2],
+        ];
+
+        $response = $this->withHeaders([
+            'Authorization' => "Bearer {$this->token}",
+            'Accept' => 'application/json',
+        ])->post('/api/v1/admin/products', $data);
+
+        $response->assertStatus(201);
+
+        $product = Product::where('slug', 'product-with-images')->first();
+        $this->assertNotNull($product);
+        $this->assertEquals(2, $product->images()->count());
+
+        $first = $product->images()->orderBy('position')->first();
+        $this->assertTrue($first->is_primary);
+        $this->assertEquals(0, $first->position);
+        $this->assertNotNull($first->path_original);
+        $this->assertNotNull($first->path_medium);
+        $this->assertNotNull($first->path_thumb);
+
+        // Files exist on public disk (strip /storage/ prefix)
+        $this->assertTrue(Storage::disk('public')->exists(str_replace('/storage/', '', $first->path_original)));
+        $this->assertTrue(Storage::disk('public')->exists(str_replace('/storage/', '', $first->path_medium)));
+        $this->assertTrue(Storage::disk('public')->exists(str_replace('/storage/', '', $first->path_thumb)));
+
+        // Response contains primary_image_path
+        $this->assertNotNull($response->json('data.primary_image_path'));
+    }
+
+    public function test_admin_can_replace_images_on_update(): void
+    {
+        Storage::fake('public');
+
+        $brand = Brand::factory()->create();
+        $category = Category::factory()->create();
+
+        // Create with one image
+        $file1 = UploadedFile::fake()->image('init.jpg', 500, 500);
+        $create = [
+            'name' => 'Replace Images Product',
+            'slug' => 'replace-images-product',
+            'product_type' => 'simple',
+            'brand_id' => $brand->id,
+            'categories' => [$category->id],
+            'images' => [$file1],
+        ];
+        $this->withHeaders([
+            'Authorization' => "Bearer {$this->token}",
+            'Accept' => 'application/json',
+        ])->post('/api/v1/admin/products', $create)->assertStatus(201);
+
+        $product = Product::where('slug', 'replace-images-product')->first();
+        $this->assertEquals(1, $product->images()->count());
+        $oldImage = $product->images()->first();
+
+        // Update with two new images (replace set)
+        $new1 = UploadedFile::fake()->image('new1.jpg', 1000, 800);
+        $new2 = UploadedFile::fake()->image('new2.png', 800, 800);
+        $update = [
+            'name' => 'Replace Images Product',
+            'product_type' => 'simple',
+            'images' => [$new1, $new2],
+        ];
+
+        $this->withHeaders([
+            'Authorization' => "Bearer {$this->token}",
+            'Accept' => 'application/json',
+        ])->put("/api/v1/admin/products/{$product->id}", $update)->assertStatus(200);
+
+        $product->refresh();
+        $this->assertEquals(2, $product->images()->count());
+        $first = $product->images()->orderBy('position')->first();
+        $this->assertTrue($first->is_primary);
+        $this->assertEquals(0, $first->position);
+
+        // Old files should be deleted
+        $this->assertFalse(Storage::disk('public')->exists(str_replace('/storage/', '', $oldImage->path_original)));
+        $this->assertFalse(Storage::disk('public')->exists(str_replace('/storage/', '', $oldImage->path_medium)));
+        $this->assertFalse(Storage::disk('public')->exists(str_replace('/storage/', '', $oldImage->path_thumb)));
+    }
+
+    public function test_product_creation_rejects_more_than_three_images(): void
+    {
+        Storage::fake('public');
+
+        $brand = Brand::factory()->create();
+
+        $files = [
+            UploadedFile::fake()->image('1.jpg'),
+            UploadedFile::fake()->image('2.jpg'),
+            UploadedFile::fake()->image('3.jpg'),
+            UploadedFile::fake()->image('4.jpg'),
+        ];
+
+        $data = [
+            'name' => 'Too Many Images',
+            'product_type' => 'simple',
+            'brand_id' => $brand->id,
+            'images' => $files,
+        ];
+
+        $response = $this->withHeaders([
+            'Authorization' => "Bearer {$this->token}",
+            'Accept' => 'application/json',
+        ])->post('/api/v1/admin/products', $data);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['images']);
     }
 
     public function test_admin_can_list_products(): void

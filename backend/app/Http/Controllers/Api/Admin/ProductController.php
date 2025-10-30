@@ -17,9 +17,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
+    use ProductImageStorage;
     /**
      * List all products with pagination and filtering.
      *
@@ -78,7 +80,7 @@ class ProductController extends Controller
         }
 
         // Eager load relationships
-        $query->with(['brand', 'categories', 'primaryImage']);
+        $query->with(['brand', 'categories', 'images']);
 
         // Pagination
         $perPage = min($request->get('size', 15), 100);
@@ -116,15 +118,29 @@ class ProductController extends Controller
                 $product->categories()->sync($categories);
             }
 
-            // Create images
+            // Create images (inline upload up to 3 files)
             if (!empty($images)) {
-                foreach ($images as $image) {
-                    $product->images()->create([
-                        'url' => $image['url'],
-                        'alt_text' => $image['alt_text'] ?? null,
-                        'position' => $image['position'] ?? 0,
-                        'is_primary' => $image['is_primary'] ?? false,
-                    ]);
+                $position = 0;
+                foreach ($request->file('images', []) as $file) {
+                    if ($position >= 3) {
+                        break;
+                    }
+
+                    $stored = $this->storeProductImageFiles($product->id, $file);
+
+                    if ($stored) {
+                        $product->images()->create([
+                            // keep legacy url populated to satisfy NOT NULL schema
+                            'url' => $stored['original'],
+                            'path_original' => $stored['original'],
+                            'path_medium' => $stored['medium'],
+                            'path_thumb' => $stored['thumb'],
+                            'alt_text' => null,
+                            'position' => $position,
+                            'is_primary' => $position === 0,
+                        ]);
+                        $position++;
+                    }
                 }
             }
 
@@ -204,12 +220,8 @@ class ProductController extends Controller
     {
         $query = Product::query()->where('id', $id);
 
-        // Eager load based on query params
-        $query->with(['brand', 'categories']);
-
-        if ($request->boolean('with_images')) {
-            $query->with('images');
-        }
+        // Always eager-load images for detail view
+        $query->with(['brand', 'categories', 'images']);
 
         if ($request->boolean('with_variants')) {
             $loadVariants = ['variants.attributeValues.attribute', 'variants.attributeValues.attributeValue'];
@@ -269,6 +281,35 @@ class ProductController extends Controller
             // Sync categories if provided
             if ($categories !== null) {
                 $product->categories()->sync($categories);
+            }
+
+            // Replace images if new files provided
+            if ($request->hasFile('images')) {
+                // delete existing files and records
+                foreach ($product->images as $img) {
+                    $this->deleteProductImageFiles($img);
+                }
+                $product->images()->delete();
+
+                $position = 0;
+                foreach ($request->file('images', []) as $file) {
+                    if ($position >= 3) {
+                        break;
+                    }
+                    $stored = $this->storeProductImageFiles($product->id, $file);
+                    if ($stored) {
+                        $product->images()->create([
+                            'url' => $stored['original'],
+                            'path_original' => $stored['original'],
+                            'path_medium' => $stored['medium'],
+                            'path_thumb' => $stored['thumb'],
+                            'alt_text' => null,
+                            'position' => $position,
+                            'is_primary' => $position === 0,
+                        ]);
+                        $position++;
+                    }
+                }
             }
 
             // Update variants if provided
@@ -429,5 +470,111 @@ class ProductController extends Controller
 
         $product->load(['attributeValues']);
         return (new ProductResource($product))->response();
+    }
+}
+
+/**
+ * Image storage helpers (GD-based resizing)
+ */
+trait ProductImageStorage
+{
+    protected function storeProductImageFiles(int $productId, \Illuminate\Http\UploadedFile $file): ?array
+    {
+        $disk = 'public';
+        $baseDir = "products/{$productId}";
+
+        // Ensure directories
+        Storage::disk($disk)->makeDirectory("{$baseDir}/original");
+        Storage::disk($disk)->makeDirectory("{$baseDir}/medium");
+        Storage::disk($disk)->makeDirectory("{$baseDir}/thumb");
+
+        // Generate safe filename
+        $extension = strtolower($file->getClientOriginalExtension() ?: 'jpg');
+        $filename = uniqid('img_', true) . '.' . $extension;
+
+        // Save original
+        $originalPath = Storage::disk($disk)->putFileAs("{$baseDir}/original", $file, $filename);
+
+        try {
+            // Read original binary for resizing
+            $binary = Storage::disk($disk)->get($originalPath);
+
+            $mediumPath = "{$baseDir}/medium/{$filename}";
+            $thumbPath = "{$baseDir}/thumb/{$filename}";
+
+            $this->resizeAndSave($binary, 800, $disk, $mediumPath);
+            $this->resizeAndSave($binary, 200, $disk, $thumbPath);
+
+            return [
+                'original' => '/storage/' . $originalPath,
+                'medium' => '/storage/' . $mediumPath,
+                'thumb' => '/storage/' . $thumbPath,
+            ];
+        } catch (\Throwable $e) {
+            // Cleanup on failure
+            if (isset($originalPath)) {
+                Storage::disk($disk)->delete($originalPath);
+            }
+            return null;
+        }
+    }
+
+    protected function resizeAndSave(string $binary, int $targetMax, string $disk, string $path): void
+    {
+        $source = imagecreatefromstring($binary);
+        if ($source === false) {
+            throw new \RuntimeException('Invalid image data');
+        }
+
+        $width = imagesx($source);
+        $height = imagesy($source);
+
+        // Calculate new size preserving aspect ratio, scale so longest side == targetMax
+        if ($width >= $height) {
+            $newWidth = $targetMax;
+            $newHeight = (int) floor($height * ($targetMax / $width));
+        } else {
+            $newHeight = $targetMax;
+            $newWidth = (int) floor($width * ($targetMax / $height));
+        }
+
+        $dest = imagecreatetruecolor($newWidth, $newHeight);
+        imagealphablending($dest, false);
+        imagesavealpha($dest, true);
+
+        // Preserve transparency for PNG/WebP
+        $transparent = imagecolorallocatealpha($dest, 0, 0, 0, 127);
+        imagefilledrectangle($dest, 0, 0, $newWidth, $newHeight, $transparent);
+
+        imagecopyresampled($dest, $source, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+
+        // Determine encoder by file extension
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        ob_start();
+        if ($ext === 'png') {
+            imagepng($dest, null, 6);
+        } elseif ($ext === 'webp') {
+            imagewebp($dest, null, 85);
+        } else {
+            imagejpeg($dest, null, 85);
+        }
+        $resizedData = ob_get_clean();
+
+        imagedestroy($source);
+        imagedestroy($dest);
+
+        Storage::disk($disk)->put($path, $resizedData);
+    }
+
+    protected function deleteProductImageFiles(\App\Models\Catalog\ProductImage $image): void
+    {
+        $disk = 'public';
+        foreach (['path_original', 'path_medium', 'path_thumb'] as $key) {
+            $path = $image->{$key};
+            if ($path) {
+                $relative = ltrim(str_replace('/storage/', '', $path), '/');
+                Storage::disk($disk)->delete($relative);
+            }
+        }
     }
 }

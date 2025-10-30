@@ -38,7 +38,13 @@ class ProductResource extends JsonResource
             'brand' => new BrandResource($this->whenLoaded('brand')),
             'categories' => CategoryResource::collection($this->whenLoaded('categories')),
             'images' => ProductImageResource::collection($this->whenLoaded('images')),
-            'primary_image' => new ProductImageResource($this->whenLoaded('primaryImage')),
+            'primary_image_path' => $this->when(
+                $this->relationLoaded('images'),
+                function () {
+                    $first = $this->images->sortBy('position')->first();
+                    return $first?->path_medium ?? $first?->path_original;
+                }
+            ),
             'variants' => ProductVariantResource::collection($this->whenLoaded('variants')),
             'variants_count' => $this->whenCounted('variants'),
             'created_at' => $this->created_at?->toISOString(),

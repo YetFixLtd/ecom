@@ -23,6 +23,9 @@ class ProductImage extends Model
     protected $fillable = [
         'product_id',
         'url',
+        'path_original',
+        'path_medium',
+        'path_thumb',
         'alt_text',
         'position',
         'is_primary',

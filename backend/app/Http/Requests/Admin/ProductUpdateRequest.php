@@ -50,6 +50,10 @@ class ProductUpdateRequest extends FormRequest
             'categories' => ['nullable', 'array'],
             'categories.*' => ['integer', 'exists:categories,id'],
 
+            // Images (replace set, up to 3 files)
+            'images' => ['nullable', 'array', 'max:3'],
+            'images.*' => ['file', 'image', 'mimes:jpeg,png,webp', 'max:5120'],
+
             // Variants (for nested editing)
             'variants' => ['nullable', 'array'],
             'variants.*.id' => ['nullable', 'integer', 'exists:product_variants,id'],
