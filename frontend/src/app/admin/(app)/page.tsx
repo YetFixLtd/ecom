@@ -1,28 +1,13 @@
-import { adminApiFetch } from "@/lib/admin-api";
 import type { Administrator } from "@/types/admin";
 export const metadata = { title: "Dashboard" };
 
 type MeResponse = { data: Administrator };
 
 export default async function AdminDashboardPage() {
-  let admin: Administrator | null = null;
-  try {
-    const me = await adminApiFetch<MeResponse>("/admin/auth/me");
-    admin = me.data;
-  } catch {
-    // middleware should protect; render minimal fallback
-  }
-
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold">
-          {admin
-            ? `Welcome, ${admin.first_name || ""} ${
-                admin.last_name || admin.email
-              }`
-            : "Welcome"}
-        </h2>
+        <h2 className="text-xl font-semibold">Welcome</h2>
         <p className="text-sm text-gray-600">
           Here is what’s happening with your store.
         </p>
