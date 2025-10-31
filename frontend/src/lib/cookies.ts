@@ -4,11 +4,12 @@ const ADMIN_TOKEN_COOKIE = "admin_token";
 
 export async function getAdminTokenFromCookies(): Promise<string | undefined> {
   try {
-    const cookieStore = cookies() as unknown as {
-      get: (name: string) => { value?: string } | undefined;
-    };
-    const token = cookieStore.get(ADMIN_TOKEN_COOKIE)?.value;
-    return token || undefined;
+    if (typeof window === "undefined") {
+      const store = await cookies();
+      return store.get(ADMIN_TOKEN_COOKIE)?.value || undefined;
+    }
+    const m = document.cookie.match(/(?:^|; )admin_token=([^;]+)/);
+    return m ? decodeURIComponent(m[1]) : undefined;
   } catch {
     return undefined;
   }
@@ -21,7 +22,7 @@ export function getAdminCookieName(): string {
 export function getCookieOptions() {
   const isProd = process.env.NODE_ENV === "production";
   return {
-    httpOnly: true as const,
+    httpOnly: false as const, // Changed to false so JavaScript can access it
     secure: isProd,
     sameSite: "lax" as const,
     path: "/",

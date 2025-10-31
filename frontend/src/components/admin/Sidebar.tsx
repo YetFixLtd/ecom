@@ -5,14 +5,14 @@ import { usePathname } from "next/navigation";
 import { LayoutDashboard, Package, Boxes, Shield } from "lucide-react";
 
 const navItems = [
-  { href: "/admin", label: "Dashboard", Icon: LayoutDashboard },
+  { href: "/admin", label: "Dashboard", Icon: LayoutDashboard, disabled: true },
   { href: "/admin/catalog", label: "Catalog", Icon: Package, disabled: true },
   { href: "/admin/inventory", label: "Inventory", Icon: Boxes, disabled: true },
   {
-    href: "/admin/administrators",
-    label: "Administrators",
+    href: "/admin/manage",
+    label: "Manage Admins",
     Icon: Shield,
-    disabled: true,
+    disabled: false,
   },
 ];
 
@@ -27,7 +27,8 @@ export function Sidebar() {
       </div>
       <nav className="space-y-1">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive =
+            pathname === item.href || pathname.startsWith(item.href + "/");
           const baseClasses =
             "flex items-center gap-2 rounded-md px-3 py-2 text-sm";
           const activeClasses = isActive
