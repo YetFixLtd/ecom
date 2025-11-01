@@ -10,17 +10,36 @@ import {
   type Administrator,
   type UpdateAdminData,
 } from "@/lib/apis/adminManage";
+import { getAdminTokenFromCookies } from "@/lib/cookies";
 import { AxiosError } from "axios";
 
 const schema = z
   .object({
-    email: z.string().email("Please provide a valid email address.").optional().or(z.literal("")),
-    password: z.string().min(8, "Password must be at least 8 characters.").optional().or(z.literal("")),
+    email: z
+      .string()
+      .email("Please provide a valid email address.")
+      .optional()
+      .or(z.literal("")),
+    password: z
+      .string()
+      .min(8, "Password must be at least 8 characters.")
+      .optional()
+      .or(z.literal("")),
     password_confirmation: z.string().optional().or(z.literal("")),
-    first_name: z.string().min(1, "First name is required.").optional().or(z.literal("")),
-    last_name: z.string().min(1, "Last name is required.").optional().or(z.literal("")),
+    first_name: z
+      .string()
+      .min(1, "First name is required.")
+      .optional()
+      .or(z.literal("")),
+    last_name: z
+      .string()
+      .min(1, "Last name is required.")
+      .optional()
+      .or(z.literal("")),
     phone: z.string().optional().or(z.literal("")),
-    role: z.enum(["super_admin", "admin", "manager", "staff", "worker"]).optional(),
+    role: z
+      .enum(["super_admin", "admin", "manager", "staff", "worker"])
+      .optional(),
     is_active: z.boolean().optional(),
   })
   .refine(
@@ -72,17 +91,12 @@ export function EditAdminModal({ admin, onClose, onSuccess }: Props) {
     },
   });
 
-  const getAdminToken = (): string | null => {
-    const match = document.cookie.match(/(?:^|; )admin_token=([^;]+)/);
-    return match ? decodeURIComponent(match[1]) : null;
-  };
-
   const onSubmit = async (values: FormValues) => {
     setServerError(null);
     setIsSubmitting(true);
 
     try {
-      const token = getAdminToken();
+      const token = await getAdminTokenFromCookies();
       if (!token) {
         setServerError("Not authenticated");
         return;
@@ -90,7 +104,7 @@ export function EditAdminModal({ admin, onClose, onSuccess }: Props) {
 
       // Only send fields that have values
       const updateData: UpdateAdminData = {};
-      
+
       if (values.email && values.email !== admin.email) {
         updateData.email = values.email;
       }
@@ -106,7 +120,10 @@ export function EditAdminModal({ admin, onClose, onSuccess }: Props) {
       if (values.role && values.role !== admin.role) {
         updateData.role = values.role;
       }
-      if (values.is_active !== undefined && values.is_active !== admin.is_active) {
+      if (
+        values.is_active !== undefined &&
+        values.is_active !== admin.is_active
+      ) {
         updateData.is_active = values.is_active;
       }
       if (values.password && values.password.length > 0) {
@@ -184,14 +201,18 @@ export function EditAdminModal({ admin, onClose, onSuccess }: Props) {
                 placeholder="admin@example.com"
               />
               {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.email.message}
+                </p>
               )}
             </div>
 
             {/* Name Fields */}
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label className="mb-1 block text-sm font-medium">First Name</label>
+                <label className="mb-1 block text-sm font-medium">
+                  First Name
+                </label>
                 <input
                   type="text"
                   {...register("first_name")}
@@ -199,12 +220,16 @@ export function EditAdminModal({ admin, onClose, onSuccess }: Props) {
                   placeholder="John"
                 />
                 {errors.first_name && (
-                  <p className="mt-1 text-sm text-red-600">{errors.first_name.message}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.first_name.message}
+                  </p>
                 )}
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium">Last Name</label>
+                <label className="mb-1 block text-sm font-medium">
+                  Last Name
+                </label>
                 <input
                   type="text"
                   {...register("last_name")}
@@ -212,7 +237,9 @@ export function EditAdminModal({ admin, onClose, onSuccess }: Props) {
                   placeholder="Doe"
                 />
                 {errors.last_name && (
-                  <p className="mt-1 text-sm text-red-600">{errors.last_name.message}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.last_name.message}
+                  </p>
                 )}
               </div>
             </div>
@@ -227,16 +254,22 @@ export function EditAdminModal({ admin, onClose, onSuccess }: Props) {
                 placeholder="+1234567890"
               />
               {errors.phone && (
-                <p className="mt-1 text-sm text-red-600">{errors.phone.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.phone.message}
+                </p>
               )}
             </div>
 
             {/* Password Fields (Optional) */}
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-              <h3 className="mb-3 text-sm font-medium">Change Password (Optional)</h3>
+              <h3 className="mb-3 text-sm font-medium">
+                Change Password (Optional)
+              </h3>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-sm font-medium">New Password</label>
+                  <label className="mb-1 block text-sm font-medium">
+                    New Password
+                  </label>
                   <input
                     type="password"
                     {...register("password")}
@@ -244,12 +277,16 @@ export function EditAdminModal({ admin, onClose, onSuccess }: Props) {
                     placeholder="Leave blank to keep current"
                   />
                   {errors.password && (
-                    <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.password.message}
+                    </p>
                   )}
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Confirm New Password</label>
+                  <label className="mb-1 block text-sm font-medium">
+                    Confirm New Password
+                  </label>
                   <input
                     type="password"
                     {...register("password_confirmation")}
@@ -279,7 +316,9 @@ export function EditAdminModal({ admin, onClose, onSuccess }: Props) {
                 <option value="worker">Worker</option>
               </select>
               {errors.role && (
-                <p className="mt-1 text-sm text-red-600">{errors.role.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.role.message}
+                </p>
               )}
             </div>
 
@@ -320,4 +359,3 @@ export function EditAdminModal({ admin, onClose, onSuccess }: Props) {
     </div>
   );
 }
-

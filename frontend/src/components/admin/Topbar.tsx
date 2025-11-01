@@ -3,6 +3,10 @@
 import { useRouter } from "next/navigation";
 import { ShoppingBag } from "lucide-react";
 import { adminLogout } from "@/lib/apis/auth";
+import {
+  getAdminTokenFromCookies,
+  deleteAdminTokenCookie,
+} from "@/lib/cookies";
 import { useState } from "react";
 
 export function Topbar() {
@@ -16,7 +20,7 @@ export function Topbar() {
 
     try {
       // Get the admin token from cookies
-      const token = getAdminTokenFromCookie();
+      const token = await getAdminTokenFromCookies();
 
       if (token) {
         // Call the logout API to invalidate the token on the server
@@ -33,17 +37,6 @@ export function Topbar() {
       router.replace("/admin/login");
       setIsLoggingOut(false);
     }
-  };
-
-  // Helper function to get admin token from cookie
-  const getAdminTokenFromCookie = (): string | null => {
-    const match = document.cookie.match(/(?:^|; )admin_token=([^;]+)/);
-    return match ? decodeURIComponent(match[1]) : null;
-  };
-
-  // Helper function to delete admin token cookie
-  const deleteAdminTokenCookie = () => {
-    document.cookie = "admin_token=; path=/; max-age=0";
   };
 
   return (

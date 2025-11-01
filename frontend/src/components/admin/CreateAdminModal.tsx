@@ -5,22 +5,28 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { X } from "lucide-react";
-import { createAdministrator, type CreateAdminData } from "@/lib/apis/adminManage";
+import {
+  createAdministrator,
+  type CreateAdminData,
+} from "@/lib/apis/adminManage";
+import { getAdminTokenFromCookies } from "@/lib/cookies";
 import { AxiosError } from "axios";
 
-const schema = z.object({
-  email: z.string().email("Please provide a valid email address."),
-  password: z.string().min(8, "Password must be at least 8 characters."),
-  password_confirmation: z.string().min(1, "Please confirm your password."),
-  first_name: z.string().min(1, "First name is required."),
-  last_name: z.string().min(1, "Last name is required."),
-  phone: z.string().optional(),
-  role: z.enum(["super_admin", "admin", "manager", "staff", "worker"]),
-  is_active: z.boolean().optional(),
-}).refine((data) => data.password === data.password_confirmation, {
-  message: "Passwords do not match",
-  path: ["password_confirmation"],
-});
+const schema = z
+  .object({
+    email: z.string().email("Please provide a valid email address."),
+    password: z.string().min(8, "Password must be at least 8 characters."),
+    password_confirmation: z.string().min(1, "Please confirm your password."),
+    first_name: z.string().min(1, "First name is required."),
+    last_name: z.string().min(1, "Last name is required."),
+    phone: z.string().optional(),
+    role: z.enum(["super_admin", "admin", "manager", "staff", "worker"]),
+    is_active: z.boolean().optional(),
+  })
+  .refine((data) => data.password === data.password_confirmation, {
+    message: "Passwords do not match",
+    path: ["password_confirmation"],
+  });
 
 type FormValues = z.infer<typeof schema>;
 
@@ -53,17 +59,12 @@ export function CreateAdminModal({ onClose, onSuccess }: Props) {
     },
   });
 
-  const getAdminToken = (): string | null => {
-    const match = document.cookie.match(/(?:^|; )admin_token=([^;]+)/);
-    return match ? decodeURIComponent(match[1]) : null;
-  };
-
   const onSubmit = async (values: FormValues) => {
     setServerError(null);
     setIsSubmitting(true);
 
     try {
-      const token = getAdminToken();
+      const token = await getAdminTokenFromCookies();
       if (!token) {
         setServerError("Not authenticated");
         return;
@@ -134,7 +135,9 @@ export function CreateAdminModal({ onClose, onSuccess }: Props) {
                 placeholder="admin@example.com"
               />
               {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.email.message}
+                </p>
               )}
             </div>
 
@@ -151,7 +154,9 @@ export function CreateAdminModal({ onClose, onSuccess }: Props) {
                   placeholder="John"
                 />
                 {errors.first_name && (
-                  <p className="mt-1 text-sm text-red-600">{errors.first_name.message}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.first_name.message}
+                  </p>
                 )}
               </div>
 
@@ -166,7 +171,9 @@ export function CreateAdminModal({ onClose, onSuccess }: Props) {
                   placeholder="Doe"
                 />
                 {errors.last_name && (
-                  <p className="mt-1 text-sm text-red-600">{errors.last_name.message}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.last_name.message}
+                  </p>
                 )}
               </div>
             </div>
@@ -181,7 +188,9 @@ export function CreateAdminModal({ onClose, onSuccess }: Props) {
                 placeholder="+1234567890"
               />
               {errors.phone && (
-                <p className="mt-1 text-sm text-red-600">{errors.phone.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.phone.message}
+                </p>
               )}
             </div>
 
@@ -198,7 +207,9 @@ export function CreateAdminModal({ onClose, onSuccess }: Props) {
                   placeholder="Min. 8 characters"
                 />
                 {errors.password && (
-                  <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.password.message}
+                  </p>
                 )}
               </div>
 
@@ -236,7 +247,9 @@ export function CreateAdminModal({ onClose, onSuccess }: Props) {
                 <option value="worker">Worker</option>
               </select>
               {errors.role && (
-                <p className="mt-1 text-sm text-red-600">{errors.role.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.role.message}
+                </p>
               )}
             </div>
 
@@ -277,4 +290,3 @@ export function CreateAdminModal({ onClose, onSuccess }: Props) {
     </div>
   );
 }
-

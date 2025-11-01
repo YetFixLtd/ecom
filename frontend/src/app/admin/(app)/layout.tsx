@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { getAdminTokenFromCookies } from "@/lib/cookies";
 import { Sidebar } from "@/components/admin/Sidebar";
 import { Topbar } from "@/components/admin/Topbar";
 
@@ -17,8 +17,7 @@ export default async function AdminAppLayout({
 }: {
   children: ReactNode;
 }) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("admin_token")?.value;
+  const token = await getAdminTokenFromCookies();
   if (!token) {
     redirect("/admin/login");
   }

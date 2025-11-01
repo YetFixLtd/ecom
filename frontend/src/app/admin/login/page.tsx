@@ -6,6 +6,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, useSearchParams } from "next/navigation";
 import { adminLogin } from "@/lib/apis/auth";
+import { setAdminTokenCookie } from "@/lib/cookies";
 import { AxiosError } from "axios";
 
 const schema = z.object({
@@ -45,9 +46,7 @@ export default function AdminLoginPage() {
 
         // Store the token in a cookie
         if (response.data?.token) {
-          document.cookie = `admin_token=${
-            response.data.token
-          }; path=/; max-age=${60 * 60 * 24 * 7}`; // 7 days
+          setAdminTokenCookie(response.data.token);
         }
 
         router.replace(nextPath);

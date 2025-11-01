@@ -12,6 +12,7 @@ import {
   activateAdministrator,
   deactivateAdministrator,
 } from "@/lib/apis/adminManage";
+import { getAdminTokenFromCookies } from "@/lib/cookies";
 import { AxiosError } from "axios";
 import { CreateAdminModal } from "@/components/admin/CreateAdminModal";
 import { EditAdminModal } from "@/components/admin/EditAdminModal";
@@ -30,17 +31,12 @@ export default function ManageAdminsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState<Administrator | null>(null);
 
-  const getAdminToken = (): string | null => {
-    const match = document.cookie.match(/(?:^|; )admin_token=([^;]+)/);
-    return match ? decodeURIComponent(match[1]) : null;
-  };
-
   const fetchAdmins = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const token = getAdminToken();
+      const token = await getAdminTokenFromCookies();
       if (!token) {
         setError("Not authenticated");
         return;
@@ -92,7 +88,7 @@ export default function ManageAdminsPage() {
     }
 
     try {
-      const token = getAdminToken();
+      const token = await getAdminTokenFromCookies();
       if (!token) return;
 
       await deleteAdministrator(token, admin.id);
@@ -106,7 +102,7 @@ export default function ManageAdminsPage() {
 
   const handleToggleStatus = async (admin: Administrator) => {
     try {
-      const token = getAdminToken();
+      const token = await getAdminTokenFromCookies();
       if (!token) return;
 
       if (admin.is_active) {
