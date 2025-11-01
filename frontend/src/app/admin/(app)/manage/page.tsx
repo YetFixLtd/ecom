@@ -75,7 +75,7 @@ export default function ManageAdminsPage() {
   useEffect(() => {
     fetchAdmins();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, perPage]);
+  }, [currentPage, perPage, roleFilter, statusFilter]);
 
   const handleSearch = () => {
     setCurrentPage(1);
