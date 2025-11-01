@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\ApiFormRequest;
 use Illuminate\Validation\Rule;
 
 /**
@@ -11,7 +11,7 @@ use Illuminate\Validation\Rule;
  * Validates data for updating an administrator.
  * Only accessible by super_admin role.
  */
-class UpdateAdminRequest extends FormRequest
+class UpdateAdminRequest extends ApiFormRequest
 {
     /**
      * Determine if the user is authorized to make this request.

@@ -2,9 +2,9 @@
 
 namespace App\Http\Requests\Admin\Inventory;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\ApiFormRequest;
 
-class TransferUpdateRequest extends FormRequest
+class TransferUpdateRequest extends ApiFormRequest
 {
     /**
      * Determine if the user is authorized to make this request.

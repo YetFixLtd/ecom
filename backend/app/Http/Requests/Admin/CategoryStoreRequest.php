@@ -2,10 +2,10 @@
 
 namespace App\Http\Requests\Admin;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\ApiFormRequest;
 use Illuminate\Validation\Rule;
 
-class CategoryStoreRequest extends FormRequest
+class CategoryStoreRequest extends ApiFormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -31,4 +31,3 @@ class CategoryStoreRequest extends FormRequest
         ];
     }
 }
-

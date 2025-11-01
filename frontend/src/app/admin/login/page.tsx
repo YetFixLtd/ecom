@@ -5,13 +5,22 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, useSearchParams } from "next/navigation";
+import { adminLogin } from "@/lib/apis/auth";
+import { AxiosError } from "axios";
 
 const schema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
+  email: z.string().email("Please provide a valid email address."),
+  password: z.string().min(1, "Password is required."),
 });
 
 type FormValues = z.infer<typeof schema>;
+
+interface ValidationError {
+  message: string;
+  errors?: {
+    [key: string]: string[];
+  };
+}
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -22,6 +31,7 @@ export default function AdminLoginPage() {
     register,
     handleSubmit,
     formState: { errors },
+    setError,
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
   const [serverError, setServerError] = useState<string | null>(null);
@@ -30,19 +40,41 @@ export default function AdminLoginPage() {
   const onSubmit = (values: FormValues) => {
     setServerError(null);
     startTransition(async () => {
-      const res = await fetch("/api/admin/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
-      });
+      try {
+        const response = await adminLogin(values.email, values.password);
 
-      if (res.ok) {
+        // Store the token in a cookie
+        if (response.data?.token) {
+          document.cookie = `admin_token=${
+            response.data.token
+          }; path=/; max-age=${60 * 60 * 24 * 7}`; // 7 days
+        }
+
         router.replace(nextPath);
-        return;
-      }
+      } catch (error) {
+        if (error instanceof AxiosError && error.response) {
+          const data = error.response.data as ValidationError;
 
-      const data = await res.json().catch(() => ({}));
-      setServerError(data?.message || "Login failed");
+          // Handle Laravel validation errors
+          if (data.errors) {
+            // Set field-specific errors
+            Object.keys(data.errors).forEach((field) => {
+              const fieldErrors = data.errors?.[field];
+              if (fieldErrors && fieldErrors.length > 0) {
+                setError(field as keyof FormValues, {
+                  type: "server",
+                  message: fieldErrors[0],
+                });
+              }
+            });
+          }
+
+          // Set general error message
+          setServerError(data.message || "Login failed. Please try again.");
+        } else {
+          setServerError("An unexpected error occurred. Please try again.");
+        }
+      }
     });
   };
 

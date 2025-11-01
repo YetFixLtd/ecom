@@ -2,14 +2,14 @@
 
 namespace App\Http\Requests\Admin;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\ApiFormRequest;
 
 /**
  * Admin Change Password Request
  *
  * Validates administrator password change data.
  */
-class ChangePasswordRequest extends FormRequest
+class ChangePasswordRequest extends ApiFormRequest
 {
     /**
      * Determine if the user is authorized to make this request.

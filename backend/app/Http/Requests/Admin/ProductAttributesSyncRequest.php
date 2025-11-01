@@ -2,9 +2,9 @@
 
 namespace App\Http\Requests\Admin;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\ApiFormRequest;
 
-class ProductAttributesSyncRequest extends FormRequest
+class ProductAttributesSyncRequest extends ApiFormRequest
 {
     /**
      * Determine if the user is authorized to make this request.

@@ -11,7 +11,6 @@ use App\Models\Administrator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
 
 /**
  * Admin Authentication Controller
@@ -26,7 +25,6 @@ class AdminAuthController extends Controller
      *
      * @param LoginRequest $request
      * @return JsonResponse
-     * @throws ValidationException
      */
     public function login(LoginRequest $request): JsonResponse
     {
@@ -35,16 +33,22 @@ class AdminAuthController extends Controller
 
         // Check credentials
         if (!$admin || !Hash::check($request->password, $admin->password_hash)) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
-            ]);
+            return response()->json([
+                'message' => 'Validation failed.',
+                'errors' => [
+                    'email' => ['The provided credentials are incorrect.'],
+                ],
+            ], 422);
         }
 
         // Check if admin is active
         if (!$admin->is_active) {
-            throw ValidationException::withMessages([
-                'email' => ['Your administrator account has been deactivated. Please contact the system administrator.'],
-            ]);
+            return response()->json([
+                'message' => 'Validation failed.',
+                'errors' => [
+                    'email' => ['Your administrator account has been deactivated. Please contact the system administrator.'],
+                ],
+            ], 422);
         }
 
         // Revoke all existing tokens (only one active session per admin)
@@ -134,7 +138,6 @@ class AdminAuthController extends Controller
      *
      * @param ChangePasswordRequest $request
      * @return JsonResponse
-     * @throws ValidationException
      */
     public function changePassword(ChangePasswordRequest $request): JsonResponse
     {
@@ -142,9 +145,12 @@ class AdminAuthController extends Controller
 
         // Verify current password
         if (!Hash::check($request->current_password, $admin->password_hash)) {
-            throw ValidationException::withMessages([
-                'current_password' => ['The current password is incorrect.'],
-            ]);
+            return response()->json([
+                'message' => 'Validation failed.',
+                'errors' => [
+                    'current_password' => ['The current password is incorrect.'],
+                ],
+            ], 422);
         }
 
         // Update password

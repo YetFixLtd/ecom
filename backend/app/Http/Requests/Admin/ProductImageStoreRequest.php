@@ -2,9 +2,9 @@
 
 namespace App\Http\Requests\Admin;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\ApiFormRequest;
 
-class ProductImageStoreRequest extends FormRequest
+class ProductImageStoreRequest extends ApiFormRequest
 {
     /**
      * Determine if the user is authorized to make this request.

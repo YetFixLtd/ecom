@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\ApiFormRequest;
 use Illuminate\Validation\Rule;
 
 /**
@@ -10,7 +10,7 @@ use Illuminate\Validation\Rule;
  *
  * Validates administrator profile update data.
  */
-class UpdateProfileRequest extends FormRequest
+class UpdateProfileRequest extends ApiFormRequest
 {
     /**
      * Determine if the user is authorized to make this request.

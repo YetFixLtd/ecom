@@ -2,14 +2,14 @@
 
 namespace App\Http\Requests\Admin;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\ApiFormRequest;
 
 /**
  * Admin Login Request
  *
  * Validates administrator login credentials.
  */
-class LoginRequest extends FormRequest
+class LoginRequest extends ApiFormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
