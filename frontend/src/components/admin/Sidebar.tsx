@@ -5,7 +5,12 @@ import { usePathname } from "next/navigation";
 import { LayoutDashboard, Package, Boxes, Shield } from "lucide-react";
 
 const navItems = [
-  { href: "/admin", label: "Dashboard", Icon: LayoutDashboard, disabled: true },
+  {
+    href: "/admin",
+    label: "Dashboard",
+    Icon: LayoutDashboard,
+    disabled: false,
+  },
   { href: "/admin/catalog", label: "Catalog", Icon: Package, disabled: true },
   { href: "/admin/inventory", label: "Inventory", Icon: Boxes, disabled: true },
   {
@@ -27,8 +32,12 @@ export function Sidebar() {
       </div>
       <nav className="space-y-1">
         {navItems.map((item) => {
+          // For dashboard (/admin), only match exact path
+          // For other routes, match if starts with the href
           const isActive =
-            pathname === item.href || pathname.startsWith(item.href + "/");
+            item.href === "/admin"
+              ? pathname === "/admin"
+              : pathname === item.href || pathname.startsWith(item.href + "/");
           const baseClasses =
             "flex items-center gap-2 rounded-md px-3 py-2 text-sm";
           const activeClasses = isActive
