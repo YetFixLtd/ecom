@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, Upload, X, ChevronRight, ChevronDown } from "lucide-react";
@@ -17,6 +17,7 @@ import { getCategories, type Category } from "@/lib/apis/categories";
 import { getAdminTokenFromCookies } from "@/lib/cookies";
 import { AxiosError } from "axios";
 import Link from "next/link";
+import RichTextEditor from "@/components/admin/RichTextEditor";
 
 const schema = z.object({
   name: z.string().min(1, "Product name is required."),
@@ -62,6 +63,7 @@ export default function EditProductPage() {
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors },
     setError,
@@ -509,17 +511,18 @@ export default function EditProductPage() {
                   <label className="mb-1 block text-sm font-medium">
                     Description
                   </label>
-                  <textarea
-                    {...register("description")}
-                    rows={6}
-                    className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
-                    placeholder="Full product description"
+                  <Controller
+                    name="description"
+                    control={control}
+                    render={({ field }) => (
+                      <RichTextEditor
+                        value={field.value || ""}
+                        onChange={field.onChange}
+                        placeholder="Full product description"
+                        error={errors.description?.message}
+                      />
+                    )}
                   />
-                  {errors.description && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {errors.description.message}
-                    </p>
-                  )}
                 </div>
               </div>
             </div>
