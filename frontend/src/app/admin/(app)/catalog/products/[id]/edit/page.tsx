@@ -18,6 +18,7 @@ import { getAdminTokenFromCookies } from "@/lib/cookies";
 import { AxiosError } from "axios";
 import Link from "next/link";
 import RichTextEditor from "@/components/admin/RichTextEditor";
+import { getImageUrlWithFallback } from "@/lib/utils/images";
 
 const schema = z.object({
   name: z.string().min(1, "Product name is required."),
@@ -123,8 +124,8 @@ export default function EditProductPage() {
 
         // Set existing images as previews if available
         if (productData.images && productData.images.length > 0) {
-          const imageUrls = productData.images.map(
-            (img) => img.url || img.path_original || ""
+          const imageUrls = productData.images.map((img) =>
+            getImageUrlWithFallback(img.url, img.path_original)
           );
           setImagePreviews(imageUrls.filter(Boolean));
         }
@@ -561,9 +562,11 @@ export default function EditProductPage() {
                       {product.images.map((img) => (
                         <div key={img.id} className="relative">
                           <img
-                            src={
-                              img.url || img.path_original || img.path_medium
-                            }
+                            src={getImageUrlWithFallback(
+                              img.url,
+                              img.path_original,
+                              img.path_medium
+                            )}
                             alt={img.alt_text || product.name}
                             className="h-32 w-full rounded-md object-cover"
                           />

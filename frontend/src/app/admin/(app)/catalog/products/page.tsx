@@ -6,6 +6,7 @@ import Link from "next/link";
 import { getProducts, type Product, deleteProduct } from "@/lib/apis/products";
 import { getAdminTokenFromCookies } from "@/lib/cookies";
 import { AxiosError } from "axios";
+import { getImageUrl } from "@/lib/utils/images";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -193,7 +194,7 @@ export default function ProductsPage() {
                       <div className="flex items-center gap-3">
                         {product.primary_image_path ? (
                           <img
-                            src={product.primary_image_path}
+                            src={getImageUrl(product.primary_image_path)}
                             alt={product.name}
                             className="h-12 w-12 rounded object-cover"
                           />

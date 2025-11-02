@@ -28,6 +28,8 @@ Edit `.env.local`:
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+# Optional: Image base URL (defaults to API_URL without /api/v1)
+NEXT_PUBLIC_IMAGE_BASE_URL=http://localhost:8000
 ```
 
 3. **Start development server**
