@@ -16,6 +16,27 @@ class ProductUpdateRequest extends ApiFormRequest
     }
 
     /**
+     * Prepare the data for validation.
+     * Convert string booleans ("1"/"0") to actual booleans for FormData compatibility.
+     */
+    protected function prepareForValidation(): void
+    {
+        // Convert string booleans to actual booleans for validation
+        $booleanFields = ['is_active', 'is_featured'];
+
+        foreach ($booleanFields as $field) {
+            if ($this->has($field)) {
+                $value = $this->input($field);
+                if ($value === '1' || $value === 'true' || $value === 1 || $value === true) {
+                    $this->merge([$field => true]);
+                } elseif ($value === '0' || $value === 'false' || $value === 0 || $value === false) {
+                    $this->merge([$field => false]);
+                }
+            }
+        }
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>

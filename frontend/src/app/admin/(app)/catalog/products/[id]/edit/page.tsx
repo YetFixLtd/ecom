@@ -19,10 +19,13 @@ import { AxiosError } from "axios";
 import Link from "next/link";
 
 const schema = z.object({
-  name: z.string().min(1, "Product name is required.").optional().or(z.literal("")),
-  slug: z.string().optional().or(z.literal("")),
-  description: z.string().optional().or(z.literal("")),
-  short_description: z.string().max(500).optional().or(z.literal("")),
+  name: z.string().min(1, "Product name is required."),
+  slug: z.string().optional(),
+  description: z.string().optional(),
+  short_description: z
+    .string()
+    .max(500, "Short description must be 500 characters or less.")
+    .optional(),
   product_type: z.enum(["simple", "variant", "bundle"]).optional(),
   brand_id: z.number().nullable().optional(),
   published_status: z.enum(["draft", "published", "archived"]).optional(),
@@ -78,7 +81,10 @@ export default function EditProductPage() {
         if (!token) return;
 
         const [productRes, brandsRes, categoriesRes] = await Promise.all([
-          getProduct(token, productId, { with_variants: true, with_inventory: false }),
+          getProduct(token, productId, {
+            with_variants: true,
+            with_inventory: false,
+          }),
           getBrands(token, { size: 100 }),
           getCategories(token, {
             size: 100,
@@ -98,16 +104,24 @@ export default function EditProductPage() {
           slug: productData.slug,
           description: productData.description || "",
           short_description: productData.short_description || "",
-          product_type: productData.product_type as "simple" | "variant" | "bundle",
+          product_type: productData.product_type as
+            | "simple"
+            | "variant"
+            | "bundle",
           brand_id: productData.brand_id,
-          published_status: productData.published_status as "draft" | "published" | "archived",
+          published_status: productData.published_status as
+            | "draft"
+            | "published"
+            | "archived",
           is_active: productData.is_active,
           categories: productData.categories?.map((cat) => cat.id) || [],
         });
 
         // Set existing images as previews if available
         if (productData.images && productData.images.length > 0) {
-          const imageUrls = productData.images.map((img) => img.url || img.path_original || "");
+          const imageUrls = productData.images.map(
+            (img) => img.url || img.path_original || ""
+          );
           setImagePreviews(imageUrls.filter(Boolean));
         }
       } catch (error) {
@@ -151,12 +165,12 @@ export default function EditProductPage() {
   const removeImage = (index: number) => {
     const newImages = selectedImages.filter((_, i) => i !== index);
     const newPreviews = imagePreviews.filter((_, i) => i !== index);
-    
+
     // Revoke blob URLs
     if (imagePreviews[index]?.startsWith("blob:")) {
       URL.revokeObjectURL(imagePreviews[index]);
     }
-    
+
     setSelectedImages(newImages);
     setImagePreviews(newPreviews);
   };
@@ -166,7 +180,10 @@ export default function EditProductPage() {
     if (checked) {
       setValue("categories", [...current, categoryId]);
     } else {
-      setValue("categories", current.filter((id) => id !== categoryId));
+      setValue(
+        "categories",
+        current.filter((id) => id !== categoryId)
+      );
     }
   };
 
@@ -178,6 +195,7 @@ export default function EditProductPage() {
       const token = await getAdminTokenFromCookies();
       if (!token) {
         setServerError("Not authenticated");
+        setIsSubmitting(false);
         return;
       }
 
@@ -186,8 +204,13 @@ export default function EditProductPage() {
         (img) => img instanceof File && img.size > 0
       ) as File[];
 
-      if (selectedImages.length > 0 && imageFiles.length !== selectedImages.length) {
-        setServerError("Some image files are invalid. Please select valid image files.");
+      if (
+        selectedImages.length > 0 &&
+        imageFiles.length !== selectedImages.length
+      ) {
+        setServerError(
+          "Some image files are invalid. Please select valid image files."
+        );
         setIsSubmitting(false);
         return;
       }
@@ -197,36 +220,66 @@ export default function EditProductPage() {
         (f) => f instanceof File && f.size > 0
       );
 
+      // Build update data - ALWAYS send all current form values explicitly
+      // This ensures the backend receives all fields for update
       const updateData: UpdateProductData = {
-        name: values.name || product?.name,
-        slug: values.slug !== undefined ? (values.slug || undefined) : product?.slug,
-        description: values.description !== undefined ? values.description : product?.description,
+        // Always send name (required field)
+        name: values.name || product?.name || "",
+        // Send slug if provided, otherwise send current slug or empty string
+        slug: values.slug !== undefined ? values.slug : product?.slug ?? "",
+        // Always send description (even if empty, to allow clearing it)
+        description:
+          values.description !== undefined
+            ? values.description
+            : product?.description ?? "",
+        // Always send short_description
         short_description:
           values.short_description !== undefined
             ? values.short_description
-            : product?.short_description,
-        product_type: values.product_type || (product?.product_type as "simple" | "variant" | "bundle"),
+            : product?.short_description ?? "",
+        // Always send product_type (required field)
+        product_type: (values.product_type ||
+          product?.product_type ||
+          "simple") as "simple" | "variant" | "bundle",
+        // Send brand_id (can be null)
         brand_id:
           values.brand_id !== undefined
-            ? values.brand_id ?? null
+            ? values.brand_id
             : product?.brand_id ?? null,
-        published_status:
-          values.published_status ||
-          (product?.published_status as "draft" | "published" | "archived"),
-        is_active: values.is_active !== undefined ? values.is_active : product?.is_active,
+        // Always send published_status
+        published_status: (values.published_status ||
+          product?.published_status ||
+          "draft") as "draft" | "published" | "archived",
+        // Always send is_active (boolean)
+        is_active:
+          values.is_active !== undefined
+            ? values.is_active
+            : product?.is_active ?? true,
+        // Always send categories array (even if empty)
         categories:
-          values.categories && values.categories.length > 0
+          values.categories !== undefined
             ? values.categories
-            : undefined,
-        images: validFiles.length > 0 ? validFiles : undefined,
+            : product?.categories?.map((c) => c.id) || [],
       };
 
-      await updateProduct(token, productId, updateData, validFiles.length > 0 ? validFiles : undefined);
+      // Only include images if new ones were selected
+      if (validFiles.length > 0) {
+        updateData.images = validFiles;
+      }
+
+      await updateProduct(
+        token,
+        productId,
+        updateData,
+        validFiles.length > 0 ? validFiles : undefined
+      );
+
       router.push("/admin/catalog/products");
     } catch (error) {
       console.error("Error updating product:", error);
       if (error instanceof AxiosError && error.response) {
         console.error("Error response:", error.response.data);
+        console.error("Error status:", error.response.status);
         const data = error.response.data as ValidationError;
 
         if (data.errors) {
@@ -244,8 +297,17 @@ export default function EditProductPage() {
           });
         }
 
-        setServerError(data.message || "Failed to update product.");
+        setServerError(
+          data.message ||
+            `Failed to update product. Status: ${error.response.status}`
+        );
+      } else if (error instanceof AxiosError && error.request) {
+        console.error("Network error:", error.request);
+        setServerError(
+          "Network error. Please check your connection and try again."
+        );
       } else {
+        console.error("Unexpected error:", error);
         setServerError("An unexpected error occurred. Please try again.");
       }
     } finally {
@@ -464,7 +526,8 @@ export default function EditProductPage() {
                     Replace Images (Max 3)
                   </label>
                   <p className="mb-2 text-xs text-gray-500">
-                    Upload new images to replace existing ones. Leave empty to keep current images.
+                    Upload new images to replace existing ones. Leave empty to
+                    keep current images.
                   </p>
                   <label className="flex cursor-pointer items-center gap-2 rounded-md border border-gray-300 px-4 py-3 text-sm hover:bg-gray-50">
                     <Upload className="h-4 w-4" />
@@ -488,7 +551,9 @@ export default function EditProductPage() {
                       {product.images.map((img) => (
                         <div key={img.id} className="relative">
                           <img
-                            src={img.url || img.path_original || img.path_medium}
+                            src={
+                              img.url || img.path_original || img.path_medium
+                            }
                             alt={img.alt_text || product.name}
                             className="h-32 w-full rounded-md object-cover"
                           />
@@ -501,7 +566,9 @@ export default function EditProductPage() {
                 {/* New Image Previews */}
                 {imagePreviews.length > 0 && (
                   <div>
-                    <p className="mb-2 text-sm font-medium">New Images (will replace existing):</p>
+                    <p className="mb-2 text-sm font-medium">
+                      New Images (will replace existing):
+                    </p>
                     <div className="grid grid-cols-3 gap-4">
                       {imagePreviews.map((preview, index) => (
                         <div key={index} className="relative">
@@ -547,7 +614,9 @@ export default function EditProductPage() {
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Status</label>
+                  <label className="mb-1 block text-sm font-medium">
+                    Status
+                  </label>
                   <select
                     {...register("published_status")}
                     className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
@@ -559,7 +628,9 @@ export default function EditProductPage() {
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Brand</label>
+                  <label className="mb-1 block text-sm font-medium">
+                    Brand
+                  </label>
                   <select
                     {...register("brand_id", {
                       setValueAs: (v) => (v === "" ? null : Number(v)),
@@ -582,7 +653,10 @@ export default function EditProductPage() {
                     id="is_active_edit"
                     className="h-4 w-4 rounded border-gray-300 text-blue-600"
                   />
-                  <label htmlFor="is_active_edit" className="text-sm font-medium">
+                  <label
+                    htmlFor="is_active_edit"
+                    className="text-sm font-medium"
+                  >
                     Active
                   </label>
                 </div>
@@ -625,5 +699,3 @@ export default function EditProductPage() {
     </div>
   );
 }
-
-

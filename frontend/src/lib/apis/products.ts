@@ -393,20 +393,24 @@ export async function updateProduct(
 ): Promise<{ data: Product }> {
   const formData = new FormData();
 
-  // Add basic fields
-  if (data.name) formData.append("name", data.name);
-  if (data.slug) formData.append("slug", data.slug);
+  // ALWAYS add all fields explicitly - don't check for undefined
+  // The frontend should always send all fields
+  formData.append("name", data.name || "");
+  if (data.slug !== undefined) formData.append("slug", data.slug || "");
   if (data.description !== undefined)
     formData.append("description", data.description || "");
   if (data.short_description !== undefined)
     formData.append("short_description", data.short_description || "");
-  if (data.product_type) formData.append("product_type", data.product_type);
+  formData.append("product_type", data.product_type || "simple");
   if (data.brand_id !== undefined)
     formData.append("brand_id", data.brand_id ? String(data.brand_id) : "");
-  if (data.published_status)
-    formData.append("published_status", data.published_status);
-  if (data.is_active !== undefined)
-    formData.append("is_active", String(data.is_active));
+  if (data.published_status !== undefined)
+    formData.append("published_status", data.published_status || "draft");
+  // Send booleans as "1" or "0" for Laravel compatibility - always send is_active
+  formData.append(
+    "is_active",
+    (data.is_active !== undefined ? data.is_active : true) ? "1" : "0"
+  );
   if (data.sort_order !== undefined)
     formData.append("sort_order", String(data.sort_order));
   if (data.meta_title !== undefined)
@@ -415,7 +419,9 @@ export async function updateProduct(
     formData.append("meta_description", data.meta_description || "");
 
   // Add categories array if provided
-  if (data.categories) {
+  // If categories is undefined, don't send it (backend won't update categories)
+  // If categories is an array (even empty), send it to update/sync categories
+  if (data.categories !== undefined) {
     data.categories.forEach((categoryId) => {
       formData.append("categories[]", String(categoryId));
     });
@@ -429,28 +435,35 @@ export async function updateProduct(
   // Add images - use separate parameter to avoid serialization issues
   // Use images from parameter if provided, otherwise fall back to data.images
   const filesToUpload = images || data.images || [];
-  
+
   if (filesToUpload.length > 0) {
     // Filter and validate files - ensure they are actual File objects
     const validFiles = filesToUpload.filter(
       (file) => file instanceof File && file.size > 0
     );
-    
+
     // Append each file with images[] key for Laravel array parsing
     validFiles.forEach((file) => {
       formData.append("images[]", file, file.name);
     });
   }
 
-  const response = await api.put(`/admin/products/${id}`, formData, {
+  // Laravel handles FormData better with POST + method spoofing than PUT
+  // Add _method field for Laravel method spoofing
+  formData.append("_method", "PUT");
+
+  // Use POST with method spoofing - Laravel handles FormData better this way
+  const response = await api.post(`/admin/products/${id}`, formData, {
     headers: {
       ...getFormDataHeaders(token),
+      // Don't set Content-Type - let browser/axios set it automatically with boundary
     },
     // Ensure axios doesn't try to serialize FormData as JSON
     transformRequest: [
-      (data) => {
-        // Return FormData as-is, don't transform it
-        if (data instanceof FormData) {
+      (data, headers) => {
+        // If it's FormData, delete Content-Type so browser sets it with boundary
+        if (data instanceof FormData && headers) {
+          delete headers["Content-Type"];
           return data;
         }
         return data;

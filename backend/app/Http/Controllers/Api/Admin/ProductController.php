@@ -251,6 +251,9 @@ class ProductController extends Controller
         return DB::transaction(function () use ($request, $id) {
             $product = Product::findOrFail($id);
             $data = $request->validated();
+            // Get all input to ensure we capture fields that might be filtered by validation
+            // This is important because 'sometimes' rules only validate present fields
+            $allInput = $request->all();
 
             // Generate slug if name changed and slug not provided
             if (isset($data['name']) && !isset($data['slug'])) {
@@ -266,16 +269,58 @@ class ProductController extends Controller
             }
 
             // Extract nested data
-            $categories = $data['categories'] ?? null;
+            $categories = $data['categories'] ?? ($allInput['categories'] ?? null);
             $variants = $data['variants'] ?? null;
 
-            // Prepare product data (exclude nested relationships)
-            $productData = Arr::only($data, array_intersect(array_keys($data), $product->getFillable()));
-            unset($productData['categories'], $productData['variants']);
+            // Prepare product data - get all fillable fields from input
+            // Include fields from validated data first, then merge with any other input fields
+            $fillableFields = $product->getFillable();
+            $productData = [];
 
-            // Update product
+            foreach ($fillableFields as $field) {
+                // Skip nested relationships
+                if (in_array($field, ['categories', 'variants'])) {
+                    continue;
+                }
+
+                // Priority: Use validated data if available, otherwise check all input
+                // Use $request->input() to get the actual value, including empty strings
+                if (array_key_exists($field, $data)) {
+                    // Field passed validation, use validated value
+                    $productData[$field] = $data[$field];
+                } elseif ($request->has($field)) {
+                    // Field exists in request but might not have passed validation
+                    // This can happen with 'sometimes' rules - include it anyway for updates
+                    $productData[$field] = $request->input($field);
+                }
+            }
+
+            // Handle empty strings for nullable fields - convert to null if they're empty strings
+            // Also handle boolean fields that come as strings from FormData
+            foreach ($productData as $key => $value) {
+                if ($value === '') {
+                    // Convert empty strings to null for nullable fields
+                    // But keep empty strings for required fields like 'name'
+                    if (in_array($key, ['slug', 'description', 'short_description', 'brand_id'])) {
+                        $productData[$key] = null;
+                    }
+                }
+
+                // Convert string booleans to actual booleans
+                if (in_array($key, ['is_active', 'is_featured'])) {
+                    if ($value === '0' || $value === 'false' || $value === false) {
+                        $productData[$key] = false;
+                    } elseif ($value === '1' || $value === 'true' || $value === true) {
+                        $productData[$key] = true;
+                    }
+                }
+            }
+
+            // Update product if we have data to update
             if (!empty($productData)) {
                 $product->update($productData);
+                // Refresh the model to get the latest data
+                $product->refresh();
             }
 
             // Sync categories if provided
