@@ -30,6 +30,7 @@ const schema = z.object({
   brand_id: z.number().nullable().optional(),
   published_status: z.enum(["draft", "published", "archived"]).optional(),
   is_active: z.boolean().optional(),
+  is_featured: z.boolean().optional(),
   categories: z.array(z.number()).optional(),
 });
 
@@ -114,6 +115,7 @@ export default function EditProductPage() {
             | "published"
             | "archived",
           is_active: productData.is_active,
+          is_featured: productData.is_featured ?? false,
           categories: productData.categories?.map((cat) => cat.id) || [],
         });
 
@@ -255,6 +257,11 @@ export default function EditProductPage() {
           values.is_active !== undefined
             ? values.is_active
             : product?.is_active ?? true,
+        // Always send is_featured (boolean)
+        is_featured:
+          values.is_featured !== undefined
+            ? values.is_featured
+            : product?.is_featured ?? false,
         // Always send categories array (even if empty)
         categories:
           values.categories !== undefined
@@ -658,6 +665,21 @@ export default function EditProductPage() {
                     className="text-sm font-medium"
                   >
                     Active
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    {...register("is_featured")}
+                    id="is_featured_edit"
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                  />
+                  <label
+                    htmlFor="is_featured_edit"
+                    className="text-sm font-medium"
+                  >
+                    Featured
                   </label>
                 </div>
               </div>

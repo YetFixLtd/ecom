@@ -97,6 +97,7 @@ export interface Product {
   brand_id: number | null;
   published_status: string;
   is_active: boolean;
+  is_featured: boolean;
   sort_order: number;
   meta_title: string | null;
   meta_description: string | null;
@@ -205,6 +206,7 @@ export interface UpdateProductData {
   brand_id?: number | null;
   published_status?: string;
   is_active?: boolean;
+  is_featured?: boolean;
   sort_order?: number;
   meta_title?: string;
   meta_description?: string;
@@ -411,6 +413,9 @@ export async function updateProduct(
     "is_active",
     (data.is_active !== undefined ? data.is_active : true) ? "1" : "0"
   );
+  // Send is_featured as "1" or "0" for Laravel compatibility
+  if (data.is_featured !== undefined)
+    formData.append("is_featured", data.is_featured ? "1" : "0");
   if (data.sort_order !== undefined)
     formData.append("sort_order", String(data.sort_order));
   if (data.meta_title !== undefined)
