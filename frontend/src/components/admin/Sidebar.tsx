@@ -11,7 +11,7 @@ const navItems = [
     Icon: LayoutDashboard,
     disabled: false,
   },
-  { href: "/admin/catalog", label: "Catalog", Icon: Package, disabled: true },
+  { href: "/admin/catalog", label: "Catalog", Icon: Package, disabled: false },
   { href: "/admin/inventory", label: "Inventory", Icon: Boxes, disabled: true },
   {
     href: "/admin/manage",
