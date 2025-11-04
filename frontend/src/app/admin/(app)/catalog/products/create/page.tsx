@@ -5,7 +5,15 @@ import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft, Upload, X, ChevronRight, ChevronDown } from "lucide-react";
+import {
+  ArrowLeft,
+  Upload,
+  X,
+  ChevronRight,
+  ChevronDown,
+  ArrowUp,
+  ArrowDown,
+} from "lucide-react";
 import { createProduct, type CreateProductData } from "@/lib/apis/products";
 import { getBrands, type Brand } from "@/lib/apis/brands";
 import { getCategories, type Category } from "@/lib/apis/categories";
@@ -94,32 +102,81 @@ export default function CreateProductPage() {
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const files = Array.from(e.target.files)
-        .slice(0, 3)
-        .filter((file) => file instanceof File) as File[];
+      const newFiles = Array.from(e.target.files).filter(
+        (file) => file instanceof File
+      ) as File[];
 
-      console.log(
-        "Selected files:",
-        files.map((f) => ({ name: f.name, size: f.size, type: f.type }))
-      );
+      // Check total image count doesn't exceed 3
+      if (selectedImages.length + newFiles.length > 3) {
+        setServerError(
+          `Maximum 3 images allowed. You have ${
+            selectedImages.length
+          } images and trying to add ${newFiles.length} new (total would be ${
+            selectedImages.length + newFiles.length
+          }).`
+        );
+        e.target.value = ""; // Reset input
+        return;
+      }
 
-      // Revoke old preview URLs before setting new ones
-      setImagePreviews((prev) => {
-        prev.forEach((url) => URL.revokeObjectURL(url));
-        return files.map((file) => URL.createObjectURL(file));
-      });
+      // Append new files to existing selected images
+      const updatedFiles = [...selectedImages, ...newFiles];
+      const updatedPreviews = [
+        ...imagePreviews,
+        ...newFiles.map((file) => URL.createObjectURL(file)),
+      ];
 
-      setSelectedImages(files);
+      setSelectedImages(updatedFiles);
+      setImagePreviews(updatedPreviews);
+      setServerError(null);
+      e.target.value = ""; // Reset input to allow selecting same file again
     }
   };
 
   const removeImage = (index: number) => {
+    // Revoke blob URL
+    if (imagePreviews[index]?.startsWith("blob:")) {
+      URL.revokeObjectURL(imagePreviews[index]);
+    }
+
     const newImages = selectedImages.filter((_, i) => i !== index);
     const newPreviews = imagePreviews.filter((_, i) => i !== index);
     setSelectedImages(newImages);
     setImagePreviews(newPreviews);
-    // Revoke object URLs to prevent memory leaks
-    URL.revokeObjectURL(imagePreviews[index]);
+  };
+
+  // Move image up in order
+  const moveImageUp = (index: number) => {
+    if (index === 0) return; // Can't move first item up
+    const newImages = [...selectedImages];
+    const newPreviews = [...imagePreviews];
+    [newImages[index - 1], newImages[index]] = [
+      newImages[index],
+      newImages[index - 1],
+    ];
+    [newPreviews[index - 1], newPreviews[index]] = [
+      newPreviews[index],
+      newPreviews[index - 1],
+    ];
+    setSelectedImages(newImages);
+    setImagePreviews(newPreviews);
+  };
+
+  // Move image down in order
+  const moveImageDown = (index: number) => {
+    if (index === selectedImages.length - 1) return; // Can't move last item down
+    const newImages = [...selectedImages];
+    const newPreviews = [...imagePreviews];
+    [newImages[index], newImages[index + 1]] = [
+      newImages[index + 1],
+      newImages[index],
+    ];
+    [newPreviews[index], newPreviews[index + 1]] = [
+      newPreviews[index + 1],
+      newPreviews[index],
+    ];
+    setSelectedImages(newImages);
+    setImagePreviews(newPreviews);
   };
 
   const handleCategoryChange = (categoryId: number, checked: boolean) => {
@@ -410,8 +467,12 @@ export default function CreateProductPage() {
               <div className="space-y-4">
                 <div>
                   <label className="mb-2 block text-sm font-medium">
-                    Upload Images (Max 3)
+                    Upload Images (Max 3 total)
                   </label>
+                  <p className="mb-2 text-xs text-gray-500">
+                    Upload images. They will be appended to any existing images.
+                    You can rearrange them below.
+                  </p>
                   <label className="flex cursor-pointer items-center gap-2 rounded-md border border-gray-300 px-4 py-3 text-sm hover:bg-gray-50">
                     <Upload className="h-4 w-4" />
                     Choose Images
@@ -427,23 +488,73 @@ export default function CreateProductPage() {
                 </div>
 
                 {imagePreviews.length > 0 && (
-                  <div className="grid grid-cols-3 gap-4">
-                    {imagePreviews.map((preview, index) => (
-                      <div key={index} className="relative">
-                        <img
-                          src={preview}
-                          alt={`Preview ${index + 1}`}
-                          className="h-32 w-full rounded-md object-cover"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index)}
-                          className="absolute right-2 top-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
+                  <div>
+                    <p className="mb-2 text-sm font-medium">
+                      Images ({imagePreviews.length}/3) - Use arrows to reorder
+                    </p>
+                    <div className="space-y-3">
+                      {imagePreviews.map((preview, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center gap-3 rounded-md border p-2"
                         >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
+                          <div className="flex flex-col gap-1">
+                            <button
+                              type="button"
+                              onClick={() => moveImageUp(index)}
+                              disabled={index === 0}
+                              className="rounded p-1 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Move up"
+                            >
+                              <ArrowUp className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveImageDown(index)}
+                              disabled={index === imagePreviews.length - 1}
+                              className="rounded p-1 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Move down"
+                            >
+                              <ArrowDown className="h-4 w-4" />
+                            </button>
+                          </div>
+                          <img
+                            src={preview}
+                            alt={`Image ${index + 1}`}
+                            className="h-20 w-20 rounded-md object-cover"
+                            onError={() => {
+                              // If preview fails to load, try recreating blob URL from file
+                              const file = selectedImages[index];
+                              if (file && preview.startsWith("blob:")) {
+                                URL.revokeObjectURL(preview);
+                                const newPreview = URL.createObjectURL(file);
+                                setImagePreviews((prev) => {
+                                  const newPreviews = [...prev];
+                                  newPreviews[index] = newPreview;
+                                  return newPreviews;
+                                });
+                              }
+                            }}
+                          />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">
+                              Image {index + 1}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              Position: {index + 1}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index)}
+                            className="rounded-full bg-red-500 p-2 text-white hover:bg-red-600"
+                            title="Remove"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

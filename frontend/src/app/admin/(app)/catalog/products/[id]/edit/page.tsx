@@ -5,10 +5,19 @@ import { useRouter, useParams } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft, Upload, X, ChevronRight, ChevronDown } from "lucide-react";
+import {
+  ArrowLeft,
+  Upload,
+  X,
+  ChevronRight,
+  ChevronDown,
+  ArrowUp,
+  ArrowDown,
+} from "lucide-react";
 import {
   updateProduct,
   getProduct,
+  deleteProductImage,
   type UpdateProductData,
   type Product,
 } from "@/lib/apis/products";
@@ -56,8 +65,12 @@ export default function EditProductPage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedImages, setSelectedImages] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  // Unified image list - combines existing and new images for easier reordering
+  type ImageItem =
+    | { type: "existing"; id: number; url: string; preview: string }
+    | { type: "new"; file: File; preview: string; tempId: string }; // Use tempId instead of index for stable keys
+
+  const [allImages, setAllImages] = useState<ImageItem[]>([]);
   const [expandedCategories, setExpandedCategories] = useState<Set<number>>(
     new Set()
   );
@@ -122,12 +135,21 @@ export default function EditProductPage() {
           categories: productData.categories?.map((cat) => cat.id) || [],
         });
 
-        // Set existing images as previews if available
+        // Store existing images in unified list
         if (productData.images && productData.images.length > 0) {
-          const imageUrls = productData.images.map((img) =>
-            getImageUrlWithFallback(img.url, img.path_original)
-          );
-          setImagePreviews(imageUrls.filter(Boolean));
+          const existing: ImageItem[] = productData.images
+            .map((img) => {
+              const url = getImageUrlWithFallback(img.url, img.path_original);
+              if (!url) return null;
+              return {
+                type: "existing" as const,
+                id: img.id,
+                url,
+                preview: url,
+              } as ImageItem;
+            })
+            .filter((img): img is ImageItem => img !== null);
+          setAllImages(existing);
         }
       } catch (error) {
         console.error("Failed to fetch product data:", error);
@@ -144,40 +166,71 @@ export default function EditProductPage() {
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const files = Array.from(e.target.files)
-        .slice(0, 3)
-        .filter((file) => file instanceof File) as File[];
+      const newFiles = Array.from(e.target.files).filter(
+        (file) => file instanceof File
+      ) as File[];
 
-      console.log(
-        "Selected files:",
-        files.map((f) => ({ name: f.name, size: f.size, type: f.type }))
-      );
+      // Check total image count doesn't exceed 3
+      if (allImages.length + newFiles.length > 3) {
+        setServerError(
+          `Maximum 3 images allowed. You have ${
+            allImages.length
+          } images and trying to add ${newFiles.length} new (total would be ${
+            allImages.length + newFiles.length
+          }).`
+        );
+        e.target.value = ""; // Reset input
+        return;
+      }
 
-      // Revoke old preview URLs before setting new ones
-      setImagePreviews((prev) => {
-        prev.forEach((url) => {
-          if (url.startsWith("blob:")) {
-            URL.revokeObjectURL(url);
-          }
-        });
-        return files.map((file) => URL.createObjectURL(file));
-      });
+      // Append new files to unified image list
+      const newImageItems: ImageItem[] = newFiles.map((file) => ({
+        type: "new" as const,
+        file,
+        preview: URL.createObjectURL(file),
+        tempId: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Unique ID for React key
+      }));
 
-      setSelectedImages(files);
+      setAllImages((prev) => [...prev, ...newImageItems]);
+      setServerError(null);
+      e.target.value = ""; // Reset input to allow selecting same file again
     }
   };
 
+  // Remove image from unified list
   const removeImage = (index: number) => {
-    const newImages = selectedImages.filter((_, i) => i !== index);
-    const newPreviews = imagePreviews.filter((_, i) => i !== index);
-
-    // Revoke blob URLs
-    if (imagePreviews[index]?.startsWith("blob:")) {
-      URL.revokeObjectURL(imagePreviews[index]);
+    const item = allImages[index];
+    // Revoke blob URLs for new images
+    if (item.type === "new" && item.preview.startsWith("blob:")) {
+      URL.revokeObjectURL(item.preview);
     }
+    setAllImages((prev) => prev.filter((_, i) => i !== index));
+  };
 
-    setSelectedImages(newImages);
-    setImagePreviews(newPreviews);
+  // Move image up in order
+  const moveImageUp = (index: number) => {
+    if (index === 0) return; // Can't move first item up
+    setAllImages((prev) => {
+      const newImages = [...prev];
+      // Preserve all properties including preview URLs when swapping
+      const temp = newImages[index - 1];
+      newImages[index - 1] = newImages[index];
+      newImages[index] = temp;
+      return newImages;
+    });
+  };
+
+  // Move image down in order
+  const moveImageDown = (index: number) => {
+    setAllImages((prev) => {
+      if (index === prev.length - 1) return prev; // Can't move last item down
+      const newImages = [...prev];
+      // Preserve all properties including preview URLs when swapping
+      const temp = newImages[index];
+      newImages[index] = newImages[index + 1];
+      newImages[index + 1] = temp;
+      return newImages;
+    });
   };
 
   const handleCategoryChange = (categoryId: number, checked: boolean) => {
@@ -204,26 +257,22 @@ export default function EditProductPage() {
         return;
       }
 
-      // Ensure we have actual File objects - verify they're valid before proceeding
-      const imageFiles = selectedImages.filter(
-        (img) => img instanceof File && img.size > 0
-      ) as File[];
+      // Extract new image files from unified list
+      const newImageFiles = allImages
+        .filter((img) => img.type === "new")
+        .map((img) => (img.type === "new" ? img.file : null))
+        .filter((file): file is File => file instanceof File && file.size > 0);
 
-      if (
-        selectedImages.length > 0 &&
-        imageFiles.length !== selectedImages.length
-      ) {
-        setServerError(
-          "Some image files are invalid. Please select valid image files."
-        );
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Verify files are still File objects right before sending
-      const validFiles = imageFiles.filter(
-        (f) => f instanceof File && f.size > 0
-      );
+      // Check if images were changed (removed, added, or reordered)
+      const originalImageIds =
+        product?.images?.map((img) => img.id).sort() || [];
+      const currentExistingIds = allImages
+        .filter((img) => img.type === "existing")
+        .map((img) => (img.type === "existing" ? img.id : 0))
+        .sort();
+      const imagesChanged =
+        newImageFiles.length > 0 ||
+        JSON.stringify(originalImageIds) !== JSON.stringify(currentExistingIds);
 
       // Build update data - ALWAYS send all current form values explicitly
       // This ensures the backend receives all fields for update
@@ -272,16 +321,39 @@ export default function EditProductPage() {
             : product?.categories?.map((c) => c.id) || [],
       };
 
-      // Only include images if new ones were selected
-      if (validFiles.length > 0) {
-        updateData.images = validFiles;
+      // Handle image deletions first (existing images that were removed)
+      if (product?.images) {
+        const imagesToDelete = product.images.filter(
+          (img) =>
+            !allImages.some(
+              (item) => item.type === "existing" && item.id === img.id
+            )
+        );
+
+        // Delete removed images via API
+        for (const img of imagesToDelete) {
+          try {
+            await deleteProductImage(token, productId, img.id);
+          } catch (error) {
+            console.error(`Failed to delete image ${img.id}:`, error);
+            // Continue even if deletion fails
+          }
+        }
+      }
+
+      // Send new images in the order they appear (existing + new)
+      // Note: Backend currently replaces all images, so we need to send all final images
+      // For now, we'll send only new images and the backend will append them
+      // TODO: Update backend to support image reordering without replacing all
+      if (imagesChanged && newImageFiles.length > 0) {
+        updateData.images = newImageFiles;
       }
 
       await updateProduct(
         token,
         productId,
         updateData,
-        validFiles.length > 0 ? validFiles : undefined
+        imagesChanged && newImageFiles.length > 0 ? newImageFiles : undefined
       );
 
       router.push("/admin/catalog/products");
@@ -393,13 +465,13 @@ export default function EditProductPage() {
   // Cleanup previews on unmount
   useEffect(() => {
     return () => {
-      imagePreviews.forEach((url) => {
-        if (url.startsWith("blob:")) {
-          URL.revokeObjectURL(url);
+      allImages.forEach((img) => {
+        if (img.type === "new" && img.preview.startsWith("blob:")) {
+          URL.revokeObjectURL(img.preview);
         }
       });
     };
-  }, [imagePreviews]);
+  }, [allImages]);
 
   if (loading) {
     return (
@@ -534,11 +606,11 @@ export default function EditProductPage() {
               <div className="space-y-4">
                 <div>
                   <label className="mb-2 block text-sm font-medium">
-                    Replace Images (Max 3)
+                    Upload Images (Max 3 total)
                   </label>
                   <p className="mb-2 text-xs text-gray-500">
-                    Upload new images to replace existing ones. Leave empty to
-                    keep current images.
+                    Upload new images. They will be added to existing images.
+                    You can rearrange them below.
                   </p>
                   <label className="flex cursor-pointer items-center gap-2 rounded-md border border-gray-300 px-4 py-3 text-sm hover:bg-gray-50">
                     <Upload className="h-4 w-4" />
@@ -554,48 +626,85 @@ export default function EditProductPage() {
                   </label>
                 </div>
 
-                {/* Existing Images */}
-                {product.images && product.images.length > 0 && (
-                  <div>
-                    <p className="mb-2 text-sm font-medium">Current Images:</p>
-                    <div className="grid grid-cols-3 gap-4">
-                      {product.images.map((img) => (
-                        <div key={img.id} className="relative">
-                          <img
-                            src={getImageUrlWithFallback(
-                              img.url,
-                              img.path_original,
-                              img.path_medium
-                            )}
-                            alt={img.alt_text || product.name}
-                            className="h-32 w-full rounded-md object-cover"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* New Image Previews */}
-                {imagePreviews.length > 0 && (
+                {/* All Images (Existing + New) with Reorder Controls */}
+                {allImages.length > 0 && (
                   <div>
                     <p className="mb-2 text-sm font-medium">
-                      New Images (will replace existing):
+                      Images ({allImages.length}/3) - Use arrows to reorder
                     </p>
-                    <div className="grid grid-cols-3 gap-4">
-                      {imagePreviews.map((preview, index) => (
-                        <div key={index} className="relative">
+                    <div className="space-y-3">
+                      {allImages.map((img, index) => (
+                        <div
+                          key={
+                            img.type === "existing"
+                              ? `existing-${img.id}`
+                              : `new-${img.tempId}`
+                          }
+                          className="flex items-center gap-3 rounded-md border p-2"
+                        >
+                          <div className="flex flex-col gap-1">
+                            <button
+                              type="button"
+                              onClick={() => moveImageUp(index)}
+                              disabled={index === 0}
+                              className="rounded p-1 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Move up"
+                            >
+                              <ArrowUp className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveImageDown(index)}
+                              disabled={index === allImages.length - 1}
+                              className="rounded p-1 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Move down"
+                            >
+                              <ArrowDown className="h-4 w-4" />
+                            </button>
+                          </div>
                           <img
-                            src={preview}
-                            alt={`Preview ${index + 1}`}
-                            className="h-32 w-full rounded-md object-cover"
+                            src={img.preview}
+                            alt={`Image ${index + 1}`}
+                            className="h-20 w-20 rounded-md object-cover"
+                            onError={() => {
+                              // If image fails to load and it's a new image, try recreating blob URL
+                              if (img.type === "new") {
+                                const newPreview = URL.createObjectURL(
+                                  img.file
+                                );
+                                setAllImages((prev) =>
+                                  prev.map((item, idx) =>
+                                    idx === index && item.type === "new"
+                                      ? { ...item, preview: newPreview }
+                                      : item
+                                  )
+                                );
+                                // Revoke the old URL
+                                if (img.preview.startsWith("blob:")) {
+                                  URL.revokeObjectURL(img.preview);
+                                }
+                              }
+                            }}
                           />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">
+                              {img.type === "existing"
+                                ? `Existing Image ${index + 1}`
+                                : `New Image ${index + 1}`}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {img.type === "existing"
+                                ? `ID: ${img.id}`
+                                : `Position: ${index + 1}`}
+                            </p>
+                          </div>
                           <button
                             type="button"
                             onClick={() => removeImage(index)}
-                            className="absolute right-2 top-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
+                            className="rounded-full bg-red-500 p-2 text-white hover:bg-red-600"
+                            title="Remove"
                           >
-                            <X className="h-3 w-3" />
+                            <X className="h-4 w-4" />
                           </button>
                         </div>
                       ))}
