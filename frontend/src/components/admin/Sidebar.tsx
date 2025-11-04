@@ -13,6 +13,11 @@ import {
   FolderTree,
   Box,
   Tags,
+  Warehouse,
+  Package2,
+  ArrowLeftRight,
+  TrendingUp,
+  Activity,
 } from "lucide-react";
 
 const navItems = [
@@ -50,7 +55,39 @@ const navItems = [
       },
     ],
   },
-  { href: "/admin/inventory", label: "Inventory", Icon: Boxes, disabled: true },
+  {
+    href: "/admin/inventory",
+    label: "Inventory",
+    Icon: Boxes,
+    disabled: false,
+    submenu: [
+      {
+        href: "/admin/inventory/warehouses",
+        label: "Warehouses",
+        Icon: Warehouse,
+      },
+      {
+        href: "/admin/inventory/items",
+        label: "Inventory Items",
+        Icon: Package2,
+      },
+      {
+        href: "/admin/inventory/transfers",
+        label: "Transfers",
+        Icon: ArrowLeftRight,
+      },
+      {
+        href: "/admin/inventory/adjustments",
+        label: "Adjustments",
+        Icon: TrendingUp,
+      },
+      {
+        href: "/admin/inventory/movements",
+        label: "Movements",
+        Icon: Activity,
+      },
+    ],
+  },
   {
     href: "/admin/manage",
     label: "Manage Admins",
@@ -63,11 +100,17 @@ export function Sidebar() {
   const pathname = usePathname();
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
 
-  // Auto-expand catalog menu if any catalog page is active
+  // Auto-expand catalog and inventory menus if any page is active
   useEffect(() => {
-    if (pathname.startsWith("/admin/catalog")) {
-      setExpandedMenus((prev) => new Set(prev).add("/admin/catalog"));
-    }
+    const shouldExpandCatalog = pathname.startsWith("/admin/catalog");
+    const shouldExpandInventory = pathname.startsWith("/admin/inventory");
+
+    setExpandedMenus((prev) => {
+      const next = new Set(prev);
+      if (shouldExpandCatalog) next.add("/admin/catalog");
+      if (shouldExpandInventory) next.add("/admin/inventory");
+      return next;
+    });
   }, [pathname]);
 
   const toggleMenu = (href: string) => {
@@ -83,6 +126,7 @@ export function Sidebar() {
   };
 
   const isCatalogActive = pathname.startsWith("/admin/catalog");
+  const isInventoryActive = pathname.startsWith("/admin/inventory");
 
   return (
     <aside className="hidden w-64 shrink-0 border-r bg-white p-4 md:block">
@@ -97,6 +141,8 @@ export function Sidebar() {
               ? pathname === "/admin"
               : item.href === "/admin/catalog"
               ? isCatalogActive
+              : item.href === "/admin/inventory"
+              ? isInventoryActive
               : pathname === item.href || pathname.startsWith(item.href + "/");
 
           const hasSubmenu = item.submenu && item.submenu.length > 0;
