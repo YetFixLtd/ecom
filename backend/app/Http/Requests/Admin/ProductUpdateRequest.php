@@ -17,10 +17,19 @@ class ProductUpdateRequest extends ApiFormRequest
 
     /**
      * Prepare the data for validation.
+     * Decode JSON string for variants if sent as string (FormData compatibility).
      * Convert string booleans ("1"/"0") to actual booleans for FormData compatibility.
      */
     protected function prepareForValidation(): void
     {
+        // Decode variants if sent as JSON string
+        if ($this->has('variants') && is_string($this->input('variants'))) {
+            $decoded = json_decode($this->input('variants'), true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $this->merge(['variants' => $decoded]);
+            }
+        }
+
         // Convert string booleans to actual booleans for validation
         $booleanFields = ['is_active', 'is_featured'];
 

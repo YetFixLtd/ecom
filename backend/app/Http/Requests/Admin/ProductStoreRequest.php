@@ -16,6 +16,34 @@ class ProductStoreRequest extends ApiFormRequest
     }
 
     /**
+     * Prepare the data for validation.
+     * Decode JSON string for variants if sent as string (FormData compatibility).
+     */
+    protected function prepareForValidation(): void
+    {
+        // Decode variants if sent as JSON string
+        if ($this->has('variants') && is_string($this->input('variants'))) {
+            $decoded = json_decode($this->input('variants'), true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $this->merge(['variants' => $decoded]);
+            }
+        }
+
+        // Convert string booleans to actual booleans for validation
+        $booleanFields = ['is_active', 'is_featured'];
+        foreach ($booleanFields as $field) {
+            if ($this->has($field)) {
+                $value = $this->input($field);
+                if ($value === '1' || $value === 'true' || $value === 1 || $value === true) {
+                    $this->merge([$field => true]);
+                } elseif ($value === '0' || $value === 'false' || $value === 0 || $value === false) {
+                    $this->merge([$field => false]);
+                }
+            }
+        }
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>

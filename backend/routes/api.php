@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Admin\BrandController;
 use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\Admin\ProductController;
 use App\Http\Controllers\Api\Admin\AttributeController;
+use App\Http\Controllers\Api\Admin\AttributeValueController;
 use App\Http\Controllers\Api\Admin\MediaController;
 use App\Http\Controllers\Api\Admin\Inventory\WarehouseController;
 use App\Http\Controllers\Api\Admin\Inventory\InventoryItemController;
@@ -107,6 +108,15 @@ Route::prefix('v1')->group(function () {
                 'update' => 'api.admin.attributes.update',
                 'destroy' => 'api.admin.attributes.destroy',
             ]);
+
+            // Attribute Values (nested under attributes)
+            Route::get('/attributes/{attribute}/values', [AttributeValueController::class, 'index'])->name('api.admin.attributes.values.index');
+            Route::post('/attributes/{attribute}/values', [AttributeValueController::class, 'store'])->name('api.admin.attributes.values.store');
+            Route::get('/attributes/{attribute}/values/{id}', [AttributeValueController::class, 'show'])->name('api.admin.attributes.values.show');
+            Route::put('/attributes/{attribute}/values/{id}', [AttributeValueController::class, 'update'])->name('api.admin.attributes.values.update');
+            Route::patch('/attributes/{attribute}/values/{id}', [AttributeValueController::class, 'update'])->name('api.admin.attributes.values.patch');
+            Route::delete('/attributes/{attribute}/values/{id}', [AttributeValueController::class, 'destroy'])->name('api.admin.attributes.values.destroy');
+            Route::post('/attributes/{attribute}/values/reorder', [AttributeValueController::class, 'reorder'])->name('api.admin.attributes.values.reorder');
 
             // Products
             Route::get('/products', [ProductController::class, 'index'])->name('api.admin.products.index');

@@ -14,13 +14,20 @@ import {
   ArrowUp,
   ArrowDown,
 } from "lucide-react";
-import { createProduct, type CreateProductData } from "@/lib/apis/products";
+import {
+  createProduct,
+  type CreateProductData,
+  type CreateProductVariantData,
+} from "@/lib/apis/products";
 import { getBrands, type Brand } from "@/lib/apis/brands";
 import { getCategories, type Category } from "@/lib/apis/categories";
+import { getAttributes, type Attribute } from "@/lib/apis/attributes";
+import { getWarehouses, type Warehouse } from "@/lib/apis/inventory";
 import { getAdminTokenFromCookies } from "@/lib/cookies";
 import { AxiosError } from "axios";
 import Link from "next/link";
 import RichTextEditor from "@/components/admin/RichTextEditor";
+import { Plus, Trash2, Edit2 } from "lucide-react";
 
 const schema = z.object({
   name: z.string().min(1, "Product name is required."),
@@ -49,10 +56,16 @@ export default function CreateProductPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [attributes, setAttributes] = useState<Attribute[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [expandedCategories, setExpandedCategories] = useState<Set<number>>(
     new Set()
+  );
+  const [variants, setVariants] = useState<CreateProductVariantData[]>([]);
+  const [editingVariantIndex, setEditingVariantIndex] = useState<number | null>(
+    null
   );
 
   const {
@@ -74,6 +87,7 @@ export default function CreateProductPage() {
   });
 
   const selectedCategories = watch("categories") || [];
+  const productType = watch("product_type");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -81,19 +95,24 @@ export default function CreateProductPage() {
         const token = await getAdminTokenFromCookies();
         if (!token) return;
 
-        const [brandsRes, categoriesRes] = await Promise.all([
-          getBrands(token, { size: 100 }),
-          getCategories(token, {
-            size: 100,
-            include_all: true,
-            with_children: true,
-          }),
-        ]);
+        const [brandsRes, categoriesRes, attributesRes, warehousesRes] =
+          await Promise.all([
+            getBrands(token, { size: 100 }),
+            getCategories(token, {
+              size: 100,
+              include_all: true,
+              with_children: true,
+            }),
+            getAttributes(token, { size: 100, with_values: true }),
+            getWarehouses({ size: 100 }),
+          ]);
 
         setBrands(brandsRes.data);
         setCategories(categoriesRes.data);
+        setAttributes(attributesRes.data);
+        setWarehouses(warehousesRes.data);
       } catch (error) {
-        console.error("Failed to fetch brands/categories:", error);
+        console.error("Failed to fetch data:", error);
       }
     };
 
@@ -233,6 +252,56 @@ export default function CreateProductPage() {
         }))
       );
 
+      // Validate and filter variants if product type is variant
+      let validVariants: CreateProductVariantData[] | undefined = undefined;
+      if (values.product_type === "variant") {
+        if (variants.length === 0) {
+          setServerError(
+            "At least one variant is required for variant products."
+          );
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Filter out incomplete variants and validate
+        validVariants = variants.filter((variant) => {
+          // Must have SKU
+          if (!variant.sku || variant.sku.trim() === "") {
+            return false;
+          }
+          // Must have price
+          if (!variant.price || variant.price <= 0) {
+            return false;
+          }
+          // Must have at least one attribute value
+          if (
+            !variant.attribute_values ||
+            variant.attribute_values.length === 0
+          ) {
+            return false;
+          }
+          return true;
+        });
+
+        // Check if any variants were filtered out
+        if (validVariants.length === 0) {
+          setServerError(
+            "All variants must have SKU, price, and at least one attribute value."
+          );
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Check if some variants were filtered out
+        if (validVariants.length < variants.length) {
+          setServerError(
+            `Only ${validVariants.length} of ${variants.length} variant(s) are complete. Please complete all variants before submitting.`
+          );
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       const productData: CreateProductData = {
         name: values.name,
         slug: values.slug || undefined,
@@ -247,6 +316,7 @@ export default function CreateProductPage() {
           values.categories && values.categories.length > 0
             ? values.categories
             : undefined,
+        variants: validVariants,
       };
 
       // Pass images as a separate parameter to avoid serialization issues
@@ -358,6 +428,80 @@ export default function CreateProductPage() {
     };
   }, [imagePreviews]);
 
+  // Variant management functions
+  const addVariant = () => {
+    const newVariant: CreateProductVariantData = {
+      sku: "",
+      price: 0,
+      track_stock: true,
+      allow_backorder: false,
+      status: "active",
+      attribute_values: [],
+      inventory: [],
+    };
+    setVariants([...variants, newVariant]);
+    setEditingVariantIndex(variants.length);
+  };
+
+  const updateVariant = (
+    index: number,
+    updates: Partial<CreateProductVariantData>
+  ) => {
+    const updated = [...variants];
+    updated[index] = { ...updated[index], ...updates };
+    setVariants(updated);
+  };
+
+  const removeVariant = (index: number) => {
+    setVariants(variants.filter((_, i) => i !== index));
+    if (editingVariantIndex === index) {
+      setEditingVariantIndex(null);
+    } else if (editingVariantIndex !== null && editingVariantIndex > index) {
+      setEditingVariantIndex(editingVariantIndex - 1);
+    }
+  };
+
+  const updateVariantAttribute = (
+    variantIndex: number,
+    attributeId: number,
+    valueId: number | null
+  ) => {
+    const variant = variants[variantIndex];
+    const currentValues = variant.attribute_values || [];
+    const filtered = currentValues.filter(
+      (av) => av.attribute_id !== attributeId
+    );
+    const updated = valueId
+      ? [
+          ...filtered,
+          { attribute_id: attributeId, attribute_value_id: valueId },
+        ]
+      : filtered;
+    updateVariant(variantIndex, { attribute_values: updated });
+  };
+
+  const updateVariantInventory = (
+    variantIndex: number,
+    warehouseId: number,
+    updates: { on_hand?: number; safety_stock?: number; reorder_point?: number }
+  ) => {
+    const variant = variants[variantIndex];
+    const inventory = variant.inventory || [];
+    const existing = inventory.findIndex(
+      (inv) => inv.warehouse_id === warehouseId
+    );
+
+    let updated: typeof inventory;
+    if (existing >= 0) {
+      updated = [...inventory];
+      updated[existing] = { ...updated[existing], ...updates };
+    } else {
+      updated = [...inventory, { warehouse_id: warehouseId, ...updates }];
+    }
+
+    updateVariant(variantIndex, { inventory: updated });
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -460,6 +604,336 @@ export default function CreateProductPage() {
                 </div>
               </div>
             </div>
+
+            {/* Variants - Only show if product type is variant */}
+            {productType === "variant" && (
+              <div className="rounded-lg border bg-white p-6">
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">Product Variants</h2>
+                  <button
+                    type="button"
+                    onClick={addVariant}
+                    className="flex items-center gap-2 rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Variant
+                  </button>
+                </div>
+
+                {variants.length === 0 ? (
+                  <p className="text-sm text-gray-500">
+                    No variants added yet. Click &quot;Add Variant&quot; to
+                    create one.
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {variants.map((variant, index) => (
+                      <div
+                        key={index}
+                        className="rounded-md border border-gray-200 p-4"
+                      >
+                        <div className="mb-3 flex items-center justify-between">
+                          <h3 className="font-medium">Variant {index + 1}</h3>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setEditingVariantIndex(
+                                  editingVariantIndex === index ? null : index
+                                )
+                              }
+                              className="rounded-md p-1 text-gray-600 hover:bg-gray-100"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeVariant(index)}
+                              className="rounded-md p-1 text-red-600 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {editingVariantIndex === index ? (
+                          <div className="space-y-4">
+                            {/* SKU */}
+                            <div>
+                              <label className="mb-1 block text-sm font-medium">
+                                SKU <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={variant.sku}
+                                onChange={(e) =>
+                                  updateVariant(index, { sku: e.target.value })
+                                }
+                                className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                                placeholder="e.g., PRODUCT-RED-L"
+                              />
+                            </div>
+
+                            {/* Attribute Values */}
+                            {attributes.length > 0 && (
+                              <div>
+                                <label className="mb-2 block text-sm font-medium">
+                                  Attribute Values
+                                </label>
+                                <div className="space-y-2">
+                                  {attributes.map((attr) => {
+                                    const selectedValue =
+                                      variant.attribute_values?.find(
+                                        (av) => av.attribute_id === attr.id
+                                      );
+                                    return (
+                                      <div key={attr.id}>
+                                        <label className="mb-1 block text-xs text-gray-600">
+                                          {attr.name}
+                                        </label>
+                                        <select
+                                          value={
+                                            selectedValue?.attribute_value_id ||
+                                            ""
+                                          }
+                                          onChange={(e) =>
+                                            updateVariantAttribute(
+                                              index,
+                                              attr.id,
+                                              e.target.value
+                                                ? Number(e.target.value)
+                                                : null
+                                            )
+                                          }
+                                          className="w-full rounded-md border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                                        >
+                                          <option value="">
+                                            Select {attr.name}
+                                          </option>
+                                          {attr.values?.map((val) => (
+                                            <option key={val.id} value={val.id}>
+                                              {val.value}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Pricing */}
+                            <div className="grid gap-4 md:grid-cols-3">
+                              <div>
+                                <label className="mb-1 block text-sm font-medium">
+                                  Price <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={variant.price}
+                                  onChange={(e) =>
+                                    updateVariant(index, {
+                                      price: Number(e.target.value),
+                                    })
+                                  }
+                                  className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                                />
+                              </div>
+                              <div>
+                                <label className="mb-1 block text-sm font-medium">
+                                  Compare At Price
+                                </label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={variant.compare_at_price || ""}
+                                  onChange={(e) =>
+                                    updateVariant(index, {
+                                      compare_at_price: e.target.value
+                                        ? Number(e.target.value)
+                                        : null,
+                                    })
+                                  }
+                                  className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                                />
+                              </div>
+                              <div>
+                                <label className="mb-1 block text-sm font-medium">
+                                  Cost Price
+                                </label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={variant.cost_price || ""}
+                                  onChange={(e) =>
+                                    updateVariant(index, {
+                                      cost_price: e.target.value
+                                        ? Number(e.target.value)
+                                        : null,
+                                    })
+                                  }
+                                  className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Inventory Settings */}
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-4">
+                                <label className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={variant.track_stock ?? true}
+                                    onChange={(e) =>
+                                      updateVariant(index, {
+                                        track_stock: e.target.checked,
+                                      })
+                                    }
+                                    className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                                  />
+                                  <span className="text-sm">Track Stock</span>
+                                </label>
+                                <label className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={variant.allow_backorder ?? false}
+                                    onChange={(e) =>
+                                      updateVariant(index, {
+                                        allow_backorder: e.target.checked,
+                                      })
+                                    }
+                                    className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                                  />
+                                  <span className="text-sm">
+                                    Allow Backorder
+                                  </span>
+                                </label>
+                              </div>
+
+                              {/* Warehouse Inventory */}
+                              {variant.track_stock && warehouses.length > 0 && (
+                                <div className="mt-3 rounded-md border p-3">
+                                  <label className="mb-2 block text-sm font-medium">
+                                    Initial Inventory by Warehouse
+                                  </label>
+                                  <div className="space-y-2">
+                                    {warehouses.map((warehouse) => {
+                                      const inv = variant.inventory?.find(
+                                        (i) => i.warehouse_id === warehouse.id
+                                      );
+                                      return (
+                                        <div
+                                          key={warehouse.id}
+                                          className="grid grid-cols-3 gap-2"
+                                        >
+                                          <div className="text-xs text-gray-600">
+                                            {warehouse.name}
+                                          </div>
+                                          <input
+                                            type="number"
+                                            placeholder="On Hand"
+                                            value={inv?.on_hand || ""}
+                                            onChange={(e) =>
+                                              updateVariantInventory(
+                                                index,
+                                                warehouse.id,
+                                                {
+                                                  on_hand: e.target.value
+                                                    ? Number(e.target.value)
+                                                    : undefined,
+                                                }
+                                              )
+                                            }
+                                            className="rounded-md border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-600"
+                                          />
+                                          <div className="flex gap-1">
+                                            <input
+                                              type="number"
+                                              placeholder="Safety"
+                                              value={inv?.safety_stock || ""}
+                                              onChange={(e) =>
+                                                updateVariantInventory(
+                                                  index,
+                                                  warehouse.id,
+                                                  {
+                                                    safety_stock: e.target.value
+                                                      ? Number(e.target.value)
+                                                      : undefined,
+                                                  }
+                                                )
+                                              }
+                                              className="flex-1 rounded-md border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-600"
+                                            />
+                                            <input
+                                              type="number"
+                                              placeholder="Reorder"
+                                              value={inv?.reorder_point || ""}
+                                              onChange={(e) =>
+                                                updateVariantInventory(
+                                                  index,
+                                                  warehouse.id,
+                                                  {
+                                                    reorder_point: e.target
+                                                      .value
+                                                      ? Number(e.target.value)
+                                                      : undefined,
+                                                  }
+                                                )
+                                              }
+                                              className="flex-1 rounded-md border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-600"
+                                            />
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => setEditingVariantIndex(null)}
+                              className="rounded-md bg-gray-100 px-3 py-1.5 text-sm hover:bg-gray-200"
+                            >
+                              Done Editing
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-600">
+                            <div>SKU: {variant.sku || "Not set"}</div>
+                            <div>Price: ${variant.price}</div>
+                            {variant.attribute_values &&
+                              variant.attribute_values.length > 0 && (
+                                <div>
+                                  Attributes:{" "}
+                                  {variant.attribute_values
+                                    .map((av) => {
+                                      const attr = attributes.find(
+                                        (a) => a.id === av.attribute_id
+                                      );
+                                      if (!attr) return "";
+                                      const val = attr.values?.find(
+                                        (v) => v.id === av.attribute_value_id
+                                      );
+                                      return val
+                                        ? `${attr.name}: ${val.value}`
+                                        : "";
+                                    })
+                                    .filter(Boolean)
+                                    .join(", ")}
+                                </div>
+                              )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Product Images */}
             <div className="rounded-lg border bg-white p-6">
