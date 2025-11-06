@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -13,8 +13,10 @@ import {
   type Warehouse,
   type AdjustmentMode,
 } from "@/lib/apis/inventory";
+import { getProducts, type Product } from "@/lib/apis/products";
+import { getAdminTokenFromCookies } from "@/lib/cookies";
 import { AxiosError } from "axios";
-import { useEffect } from "react";
+import { SearchableVariantSelect } from "@/components/admin/inventory/SearchableVariantSelect";
 
 const schema = z.object({
   variant_id: z.number().min(1, "Variant ID is required."),
@@ -33,12 +35,15 @@ export default function AdjustmentsPage() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loadingDropdowns, setLoadingDropdowns] = useState(true);
 
   const {
     register,
     handleSubmit,
     formState: { errors },
     watch,
+    setValue,
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -49,15 +54,48 @@ export default function AdjustmentsPage() {
   const adjustmentMode = watch("adjustment_mode");
 
   useEffect(() => {
-    const fetchWarehouses = async () => {
+    const fetchDropdownData = async () => {
+      setLoadingDropdowns(true);
       try {
-        const response = await getWarehouses({ size: 100 });
-        setWarehouses(response.data);
+        const token = await getAdminTokenFromCookies();
+        if (!token) return;
+
+        // Fetch warehouses
+        const warehousesRes = await getWarehouses({ size: 100 });
+        setWarehouses(warehousesRes.data);
+
+        // Fetch all products first
+        const productsRes = await getProducts(token, { size: 1000 });
+        
+        // Filter to only variant-type products and fetch their details with variants
+        const variantProducts = productsRes.data.filter(
+          (p) => p.product_type === "variant"
+        );
+        
+        // Fetch details for variant products to get their variants
+        const { getProduct } = await import("@/lib/apis/products");
+        const productsWithVariantsData = await Promise.all(
+          variantProducts.map(async (product) => {
+            try {
+              const detail = await getProduct(token, product.id, {
+                with_variants: true,
+              });
+              return detail.data;
+            } catch (err) {
+              console.error(`Failed to fetch variants for product ${product.id}:`, err);
+              return product; // Return product without variants if fetch fails
+            }
+          })
+        );
+
+        setProducts(productsWithVariantsData);
       } catch (error) {
-        console.error("Failed to fetch warehouses:", error);
+        console.error("Failed to fetch dropdown data:", error);
+      } finally {
+        setLoadingDropdowns(false);
       }
     };
-    fetchWarehouses();
+    fetchDropdownData();
   }, []);
 
   const onSubmit = async (values: FormValues) => {
@@ -123,19 +161,15 @@ export default function AdjustmentsPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm font-medium">
-                Variant ID <span className="text-red-500">*</span>
+                Product Variant <span className="text-red-500">*</span>
               </label>
-              <input
-                type="number"
-                {...register("variant_id", { valueAsNumber: true })}
-                className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
-                placeholder="Enter variant ID"
+              <SearchableVariantSelect
+                products={products}
+                value={watch("variant_id")}
+                onChange={(variantId) => setValue("variant_id", variantId)}
+                disabled={loadingDropdowns}
+                error={errors.variant_id?.message}
               />
-              {errors.variant_id && (
-                <p className="mt-1 text-xs text-red-600">
-                  {errors.variant_id.message}
-                </p>
-              )}
             </div>
 
             <div>

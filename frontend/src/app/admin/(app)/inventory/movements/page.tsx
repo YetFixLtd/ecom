@@ -4,9 +4,13 @@ import { useEffect, useState } from "react";
 import { Search, Activity, ArrowUp, ArrowDown } from "lucide-react";
 import {
   getMovements,
+  getWarehouses,
   type InventoryMovement,
   type MovementType,
+  type Warehouse,
 } from "@/lib/apis/inventory";
+import { getProducts, type Product } from "@/lib/apis/products";
+import { getAdminTokenFromCookies } from "@/lib/cookies";
 import { AxiosError } from "axios";
 
 export default function MovementsPage() {
@@ -21,6 +25,11 @@ export default function MovementsPage() {
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
+  
+  // Dropdown data
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loadingDropdowns, setLoadingDropdowns] = useState(true);
 
   const fetchMovements = async () => {
     setLoading(true);
@@ -55,7 +64,31 @@ export default function MovementsPage() {
 
   useEffect(() => {
     fetchMovements();
-  }, [currentPage, typeFilter, dateFrom, dateTo]);
+  }, [currentPage, typeFilter, dateFrom, dateTo, variantFilter, warehouseFilter]);
+
+  useEffect(() => {
+    const fetchDropdownData = async () => {
+      setLoadingDropdowns(true);
+      try {
+        const token = await getAdminTokenFromCookies();
+        if (!token) return;
+
+        const [warehousesRes, productsRes] = await Promise.all([
+          getWarehouses({ size: 100 }),
+          getProducts(token, { size: 100 }),
+        ]);
+
+        setWarehouses(warehousesRes.data);
+        setProducts(productsRes.data);
+      } catch (err) {
+        console.error("Failed to fetch dropdown data:", err);
+      } finally {
+        setLoadingDropdowns(false);
+      }
+    };
+
+    fetchDropdownData();
+  }, []);
 
   const handleSearch = () => {
     setCurrentPage(1);
@@ -97,25 +130,45 @@ export default function MovementsPage() {
       <div className="rounded-lg border bg-white p-4">
         <div className="grid gap-4 md:grid-cols-5">
           <div>
-            <label className="mb-1 block text-sm font-medium">Variant ID</label>
-            <input
-              type="number"
+            <label className="mb-1 block text-sm font-medium">Product Variant</label>
+            <select
               value={variantFilter}
-              onChange={(e) => setVariantFilter(e.target.value)}
-              placeholder="Variant ID"
+              onChange={(e) => {
+                setVariantFilter(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
-            />
+              disabled={loadingDropdowns}
+            >
+              <option value="">All Variants</option>
+              {products.flatMap((product) =>
+                (product.variants || []).map((variant) => (
+                  <option key={variant.id} value={variant.id}>
+                    {product.name} - {variant.sku}
+                  </option>
+                ))
+              )}
+            </select>
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Warehouse ID</label>
-            <input
-              type="number"
+            <label className="mb-1 block text-sm font-medium">Warehouse</label>
+            <select
               value={warehouseFilter}
-              onChange={(e) => setWarehouseFilter(e.target.value)}
-              placeholder="Warehouse ID"
+              onChange={(e) => {
+                setWarehouseFilter(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
-            />
+              disabled={loadingDropdowns}
+            >
+              <option value="">All Warehouses</option>
+              {warehouses.map((warehouse) => (
+                <option key={warehouse.id} value={warehouse.id}>
+                  {warehouse.name} ({warehouse.code})
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

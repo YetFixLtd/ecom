@@ -4,8 +4,12 @@ import { useEffect, useState } from "react";
 import { Search, Package } from "lucide-react";
 import {
   getInventoryItems,
+  getWarehouses,
   type InventoryItem,
+  type Warehouse,
 } from "@/lib/apis/inventory";
+import { getProducts, type Product } from "@/lib/apis/products";
+import { getAdminTokenFromCookies } from "@/lib/cookies";
 import { AxiosError } from "axios";
 
 export default function InventoryItemsPage() {
@@ -18,6 +22,11 @@ export default function InventoryItemsPage() {
   const [search, setSearch] = useState("");
   const [warehouseFilter, setWarehouseFilter] = useState<string>("");
   const [variantFilter, setVariantFilter] = useState<string>("");
+  
+  // Dropdown data
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loadingDropdowns, setLoadingDropdowns] = useState(true);
 
   const fetchItems = async () => {
     setLoading(true);
@@ -51,6 +60,30 @@ export default function InventoryItemsPage() {
   useEffect(() => {
     fetchItems();
   }, [currentPage, warehouseFilter, variantFilter]);
+
+  useEffect(() => {
+    const fetchDropdownData = async () => {
+      setLoadingDropdowns(true);
+      try {
+        const token = await getAdminTokenFromCookies();
+        if (!token) return;
+
+        const [warehousesRes, productsRes] = await Promise.all([
+          getWarehouses({ size: 100 }),
+          getProducts(token, { size: 100 }),
+        ]);
+
+        setWarehouses(warehousesRes.data);
+        setProducts(productsRes.data);
+      } catch (err) {
+        console.error("Failed to fetch dropdown data:", err);
+      } finally {
+        setLoadingDropdowns(false);
+      }
+    };
+
+    fetchDropdownData();
+  }, []);
 
   const handleSearch = () => {
     setCurrentPage(1);
@@ -90,30 +123,44 @@ export default function InventoryItemsPage() {
 
           <div>
             <label className="mb-1 block text-sm font-medium">Warehouse</label>
-            <input
-              type="number"
+            <select
               value={warehouseFilter}
               onChange={(e) => {
                 setWarehouseFilter(e.target.value);
                 setCurrentPage(1);
               }}
-              placeholder="Warehouse ID"
               className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
-            />
+              disabled={loadingDropdowns}
+            >
+              <option value="">All Warehouses</option>
+              {warehouses.map((warehouse) => (
+                <option key={warehouse.id} value={warehouse.id}>
+                  {warehouse.name} ({warehouse.code})
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Variant</label>
-            <input
-              type="number"
+            <label className="mb-1 block text-sm font-medium">Product Variant</label>
+            <select
               value={variantFilter}
               onChange={(e) => {
                 setVariantFilter(e.target.value);
                 setCurrentPage(1);
               }}
-              placeholder="Variant ID"
               className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
-            />
+              disabled={loadingDropdowns}
+            >
+              <option value="">All Variants</option>
+              {products.flatMap((product) =>
+                (product.variants || []).map((variant) => (
+                  <option key={variant.id} value={variant.id}>
+                    {product.name} - {variant.sku}
+                  </option>
+                ))
+              )}
+            </select>
           </div>
         </div>
       </div>
