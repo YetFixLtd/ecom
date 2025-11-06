@@ -15,6 +15,12 @@ use App\Http\Controllers\Api\Admin\Inventory\AdjustmentController;
 use App\Http\Controllers\Api\Admin\Inventory\TransferController;
 use App\Http\Controllers\Api\Admin\Inventory\MovementController;
 use App\Http\Controllers\Api\Admin\Inventory\ReservationController;
+use App\Http\Controllers\Api\Client\AddressController;
+use App\Http\Controllers\Api\Client\ProductController as ClientProductController;
+use App\Http\Controllers\Api\Client\CategoryController as ClientCategoryController;
+use App\Http\Controllers\Api\Client\BrandController as ClientBrandController;
+use App\Http\Controllers\Api\Client\CartController;
+use App\Http\Controllers\Api\Client\OrderController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -45,6 +51,52 @@ Route::prefix('v1')->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me'])->name('api.auth.me');
         Route::put('/auth/profile', [AuthController::class, 'updateProfile'])->name('api.auth.profile');
         Route::put('/auth/password', [AuthController::class, 'changePassword'])->name('api.auth.password');
+    });
+
+    // ========================================
+    // Client Product Catalog Routes (Public)
+    // ========================================
+
+    // Products
+    Route::get('/products', [ClientProductController::class, 'index'])->name('api.products.index');
+    Route::get('/products/{id}', [ClientProductController::class, 'show'])->name('api.products.show');
+    Route::get('/products/{id}/variants', [ClientProductController::class, 'variants'])->name('api.products.variants');
+
+    // Categories
+    Route::get('/categories', [ClientCategoryController::class, 'index'])->name('api.categories.index');
+    Route::get('/categories/{id}', [ClientCategoryController::class, 'show'])->name('api.categories.show');
+
+    // Brands
+    Route::get('/brands', [ClientBrandController::class, 'index'])->name('api.brands.index');
+    Route::get('/brands/{id}', [ClientBrandController::class, 'show'])->name('api.brands.show');
+
+    // ========================================
+    // Client Protected Routes
+    // ========================================
+
+    Route::middleware('auth:sanctum')->group(function () {
+        // Address Management
+        Route::apiResource('addresses', AddressController::class)->names([
+            'index' => 'api.addresses.index',
+            'store' => 'api.addresses.store',
+            'show' => 'api.addresses.show',
+            'update' => 'api.addresses.update',
+            'destroy' => 'api.addresses.destroy',
+        ]);
+        Route::post('/addresses/{id}/set-default-billing', [AddressController::class, 'setDefaultBilling'])->name('api.addresses.set-default-billing');
+        Route::post('/addresses/{id}/set-default-shipping', [AddressController::class, 'setDefaultShipping'])->name('api.addresses.set-default-shipping');
+
+        // Cart Management
+        Route::get('/cart', [CartController::class, 'index'])->name('api.cart.index');
+        Route::post('/cart/items', [CartController::class, 'addItem'])->name('api.cart.items.store');
+        Route::put('/cart/items/{id}', [CartController::class, 'updateItem'])->name('api.cart.items.update');
+        Route::delete('/cart/items/{id}', [CartController::class, 'removeItem'])->name('api.cart.items.destroy');
+        Route::delete('/cart', [CartController::class, 'clear'])->name('api.cart.clear');
+
+        // Orders
+        Route::get('/orders', [OrderController::class, 'index'])->name('api.orders.index');
+        Route::post('/orders', [OrderController::class, 'store'])->name('api.orders.store');
+        Route::get('/orders/{id}', [OrderController::class, 'show'])->name('api.orders.show');
     });
 
     // ========================================

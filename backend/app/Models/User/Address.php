@@ -16,6 +16,16 @@ class Address extends Model
     use HasFactory;
 
     /**
+     * Create a new factory instance for the model.
+     *
+     * @return \Illuminate\Database\Eloquent\Factories\Factory<static>
+     */
+    protected static function newFactory()
+    {
+        return \Database\Factories\User\AddressFactory::new();
+    }
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var array<string>
