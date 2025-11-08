@@ -1,1 +1,23 @@
 @import "tailwindcss";
+
+@theme {
+  /* Custom Yellow Color Palette */
+  --color-yellow-primary: #FFC107;
+  --color-yellow-accent: #FFD700;
+  --color-yellow-light: #FFF9C4;
+  
+  /* Text Colors */
+  --color-text-primary: #000000;
+  --color-text-secondary: #1a1a1a;
+  
+  /* Sale Price Red */
+  --color-sale-red: #DC2626;
+  
+  /* Background Colors */
+  --color-bg-white: #FFFFFF;
+  --color-bg-gray-light: #F5F5F5;
+  --color-bg-gray-subtle: #FAFAFA;
+  
+  /* Border Colors */
+  --color-border-gray: #E5E5E5;
+}

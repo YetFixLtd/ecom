@@ -25,19 +25,46 @@ class CategoryController extends Controller
     {
         $query = Category::query();
 
-        // Load parent and children for tree structure
-        $query->with(['parent', 'children']);
-
         // If flat structure is requested, don't load relationships
         if ($request->boolean('flat')) {
             $categories = $query->orderBy('position')->get();
         } else {
-            // Get root categories (no parent) and their children
+            // Get root categories (no parent) and recursively load all children
+            // Using dot notation to load nested children up to 10 levels deep
             $categories = $query->whereNull('parent_id')
                 ->orderBy('position')
-                ->with(['children' => function ($q) {
-                    $q->orderBy('position');
-                }])
+                ->with([
+                    'children' => function ($q) {
+                        $q->orderBy('position');
+                    },
+                    'children.children' => function ($q) {
+                        $q->orderBy('position');
+                    },
+                    'children.children.children' => function ($q) {
+                        $q->orderBy('position');
+                    },
+                    'children.children.children.children' => function ($q) {
+                        $q->orderBy('position');
+                    },
+                    'children.children.children.children.children' => function ($q) {
+                        $q->orderBy('position');
+                    },
+                    'children.children.children.children.children.children' => function ($q) {
+                        $q->orderBy('position');
+                    },
+                    'children.children.children.children.children.children.children' => function ($q) {
+                        $q->orderBy('position');
+                    },
+                    'children.children.children.children.children.children.children.children' => function ($q) {
+                        $q->orderBy('position');
+                    },
+                    'children.children.children.children.children.children.children.children.children' => function ($q) {
+                        $q->orderBy('position');
+                    },
+                    'children.children.children.children.children.children.children.children.children.children' => function ($q) {
+                        $q->orderBy('position');
+                    },
+                ])
                 ->get();
         }
 
@@ -55,7 +82,44 @@ class CategoryController extends Controller
      */
     public function show(Request $request, int $id): JsonResponse
     {
-        $category = Category::with(['parent', 'children'])
+        // Recursively load parent chain and all children
+        $category = Category::with([
+            'parent',
+            'parent.parent',
+            'parent.parent.parent',
+            'parent.parent.parent.parent',
+            'parent.parent.parent.parent.parent',
+            'children' => function ($q) {
+                $q->orderBy('position');
+            },
+            'children.children' => function ($q) {
+                $q->orderBy('position');
+            },
+            'children.children.children' => function ($q) {
+                $q->orderBy('position');
+            },
+            'children.children.children.children' => function ($q) {
+                $q->orderBy('position');
+            },
+            'children.children.children.children.children' => function ($q) {
+                $q->orderBy('position');
+            },
+            'children.children.children.children.children.children' => function ($q) {
+                $q->orderBy('position');
+            },
+            'children.children.children.children.children.children.children' => function ($q) {
+                $q->orderBy('position');
+            },
+            'children.children.children.children.children.children.children.children' => function ($q) {
+                $q->orderBy('position');
+            },
+            'children.children.children.children.children.children.children.children.children' => function ($q) {
+                $q->orderBy('position');
+            },
+            'children.children.children.children.children.children.children.children.children.children' => function ($q) {
+                $q->orderBy('position');
+            },
+        ])
             ->findOrFail($id);
 
         // Count published products in this category

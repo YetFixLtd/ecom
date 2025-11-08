@@ -56,3 +56,56 @@ export function getCookieOptions() {
     path: "/",
   };
 }
+
+// ========================================
+// User Token Cookie Management
+// ========================================
+
+const USER_TOKEN_COOKIE = "user_token";
+
+/**
+ * Get user token from cookies (works in both client and server components)
+ * - Client: Returns Promise that resolves immediately with token from document.cookie
+ * - Server: Returns Promise with token from next/headers cookies()
+ */
+export async function getUserTokenFromCookies(): Promise<string | undefined> {
+  // Server-side: Use next/headers
+  if (typeof window === "undefined") {
+    try {
+      // Dynamic import to avoid bundling next/headers in client bundle
+      const { cookies } = await import("next/headers");
+      const cookieStore = await cookies();
+      return cookieStore.get(USER_TOKEN_COOKIE)?.value || undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  // Client-side: Use document.cookie (return immediately as resolved promise)
+  try {
+    const match = document.cookie.match(/(?:^|; )user_token=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Set user token in browser cookies (client-side only)
+ */
+export function setUserTokenCookie(token: string, maxAge = 60 * 60 * 24 * 7) {
+  if (typeof window === "undefined") return;
+  document.cookie = `${USER_TOKEN_COOKIE}=${token}; path=/; max-age=${maxAge}`;
+}
+
+/**
+ * Delete user token from browser cookies (client-side only)
+ */
+export function deleteUserTokenCookie() {
+  if (typeof window === "undefined") return;
+  document.cookie = `${USER_TOKEN_COOKIE}=; path=/; max-age=0`;
+}
+
+export function getUserCookieName(): string {
+  return USER_TOKEN_COOKIE;
+}
