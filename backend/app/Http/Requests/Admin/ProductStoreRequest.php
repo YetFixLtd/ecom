@@ -22,10 +22,41 @@ class ProductStoreRequest extends ApiFormRequest
     protected function prepareForValidation(): void
     {
         // Decode variants if sent as JSON string
-        if ($this->has('variants') && is_string($this->input('variants'))) {
-            $decoded = json_decode($this->input('variants'), true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                $this->merge(['variants' => $decoded]);
+        $variants = null;
+        if ($this->has('variants')) {
+            if (is_string($this->input('variants'))) {
+                $decoded = json_decode($this->input('variants'), true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $variants = $decoded;
+                }
+            } elseif (is_array($this->input('variants'))) {
+                $variants = $this->input('variants');
+            }
+        }
+
+        // Ensure attribute_values is set for simple products (can be empty array)
+        $productType = $this->input('product_type');
+        if ($variants !== null && is_array($variants)) {
+            $modified = false;
+            foreach ($variants as $index => $variant) {
+                // For simple products, always ensure attribute_values is set to an array
+                // This handles cases where it might be missing or null after JSON decoding
+                if ($productType === 'simple') {
+                    if (
+                        !isset($variant['attribute_values']) ||
+                        $variant['attribute_values'] === null ||
+                        !is_array($variant['attribute_values'])
+                    ) {
+                        $variants[$index]['attribute_values'] = [];
+                        $modified = true;
+                    }
+                }
+            }
+            if ($modified || $variants !== $this->input('variants')) {
+                // Use replace to ensure the variants are properly set
+                $allInput = $this->all();
+                $allInput['variants'] = $variants;
+                $this->replace($allInput);
             }
         }
 
@@ -78,7 +109,13 @@ class ProductStoreRequest extends ApiFormRequest
 
             // Images (inline upload, up to 3 files)
             'images' => ['nullable', 'array', 'max:3'],
-            'images.*' => ['file', 'image', 'mimes:jpeg,png,webp', 'max:5120'],
+            'images.*' => [
+                'required',
+                'file',
+                'image',
+                'mimes:jpeg,jpg,png,webp',
+                'max:5120',
+            ],
 
             // Variants (required for variant/bundle types)
             'variants' => ['required_if:product_type,variant', 'array'],
@@ -95,9 +132,23 @@ class ProductStoreRequest extends ApiFormRequest
             'variants.*.width_mm' => ['nullable', 'integer', 'min:0'],
             'variants.*.height_mm' => ['nullable', 'integer', 'min:0'],
             'variants.*.status' => ['nullable', 'string', Rule::in(['active', 'inactive'])],
-            'variants.*.attribute_values' => ['required', 'array', 'min:1'],
-            'variants.*.attribute_values.*.attribute_id' => ['required', 'integer', 'exists:attributes,id'],
-            'variants.*.attribute_values.*.attribute_value_id' => ['required', 'integer', 'exists:attribute_values,id'],
+            'variants.*.attribute_values' => [
+                'sometimes',
+                'array',
+                function ($attribute, $value, $fail) {
+                    $productType = request()->input('product_type');
+
+                    // For variant products, attribute_values must have at least 1 item
+                    if ($productType === 'variant') {
+                        if (!is_array($value) || empty($value) || count($value) < 1) {
+                            $fail('The attribute values field must have at least 1 item for variant products.');
+                        }
+                    }
+                    // For simple products, empty array is allowed (no validation needed)
+                },
+            ],
+            'variants.*.attribute_values.*.attribute_id' => ['required_with:variants.*.attribute_values.*', 'integer', 'exists:attributes,id'],
+            'variants.*.attribute_values.*.attribute_value_id' => ['required_with:variants.*.attribute_values.*', 'integer', 'exists:attribute_values,id'],
 
             // Inventory (optional)
             'variants.*.inventory' => ['nullable', 'array'],
@@ -109,11 +160,70 @@ class ProductStoreRequest extends ApiFormRequest
     }
 
     /**
+     * Get custom validation messages.
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'images.*.file' => 'The uploaded file must be a valid file.',
+            'images.*.image' => 'The uploaded file must be an image (jpeg, png, webp).',
+            'images.*.mimes' => 'The image must be a file of type: jpeg, png, webp.',
+            'images.*.max' => 'The image may not be greater than 5MB (5120KB).',
+            'images.0' => 'The first image failed to upload. Please check file size (max 5MB) and format (JPEG, PNG, WebP).',
+            'images.1' => 'The second image failed to upload. Please check file size (max 5MB) and format (JPEG, PNG, WebP).',
+            'images.2' => 'The third image failed to upload. Please check file size (max 5MB) and format (JPEG, PNG, WebP).',
+        ];
+    }
+
+    /**
      * Configure the validator instance.
      */
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
+            // Add detailed error messages for image upload failures
+            if ($this->hasFile('images')) {
+                foreach ($this->file('images', []) as $index => $file) {
+                    if ($file && $file->isValid()) {
+                        // File is valid, check specific validations
+                        $maxSize = 5120; // 5MB in KB
+                        $allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+                        $fileSizeKB = $file->getSize() / 1024;
+                        $fileMime = $file->getMimeType();
+
+                        if ($fileSizeKB > $maxSize) {
+                            $validator->errors()->add(
+                                "images.{$index}",
+                                "Image {$index}: File size ({$fileSizeKB}KB) exceeds the 5MB limit."
+                            );
+                        }
+
+                        if (!in_array($fileMime, $allowedMimes)) {
+                            $validator->errors()->add(
+                                "images.{$index}",
+                                "Image {$index}: Invalid file type ({$fileMime}). Only JPEG, PNG, and WebP are allowed."
+                            );
+                        }
+                    } elseif ($file && !$file->isValid()) {
+                        // File upload failed
+                        $errorCode = $file->getError();
+                        $errorMessages = [
+                            UPLOAD_ERR_INI_SIZE => "Image {$index}: File exceeds upload_max_filesize directive in php.ini.",
+                            UPLOAD_ERR_FORM_SIZE => "Image {$index}: File exceeds MAX_FILE_SIZE directive in HTML form.",
+                            UPLOAD_ERR_PARTIAL => "Image {$index}: File was only partially uploaded.",
+                            UPLOAD_ERR_NO_FILE => "Image {$index}: No file was uploaded.",
+                            UPLOAD_ERR_NO_TMP_DIR => "Image {$index}: Missing temporary folder.",
+                            UPLOAD_ERR_CANT_WRITE => "Image {$index}: Failed to write file to disk.",
+                            UPLOAD_ERR_EXTENSION => "Image {$index}: A PHP extension stopped the file upload.",
+                        ];
+
+                        $errorMessage = $errorMessages[$errorCode] ?? "Image {$index}: Upload failed with error code {$errorCode}.";
+                        $validator->errors()->add("images.{$index}", $errorMessage);
+                    }
+                }
+            }
             // Validate that attribute values belong to their attributes
             if ($this->has('variants')) {
                 foreach ($this->variants as $variantIndex => $variant) {

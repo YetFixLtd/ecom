@@ -67,6 +67,13 @@ export default function CreateProductPage() {
   const [editingVariantIndex, setEditingVariantIndex] = useState<number | null>(
     null
   );
+  // Simple product pricing state
+  const [simpleProductPricing, setSimpleProductPricing] = useState({
+    sku: "",
+    price: 0,
+    compare_at_price: null as number | null,
+    cost_price: null as number | null,
+  });
 
   const {
     register,
@@ -138,11 +145,50 @@ export default function CreateProductPage() {
         return;
       }
 
+      // Validate each file before adding
+      const validFiles: File[] = [];
+      const errors: string[] = [];
+      const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+      const allowedTypes = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/webp",
+      ];
+
+      newFiles.forEach((file) => {
+        // Check file size (5MB = 5120KB)
+        if (file.size > maxSize) {
+          errors.push(
+            `${file.name}: File size (${(file.size / 1024 / 1024).toFixed(
+              2
+            )}MB) exceeds the 5MB limit.`
+          );
+          return;
+        }
+
+        // Check file type
+        if (!allowedTypes.includes(file.type)) {
+          errors.push(
+            `${file.name}: Invalid file type (${file.type}). Only JPEG, PNG, and WebP are allowed.`
+          );
+          return;
+        }
+
+        validFiles.push(file);
+      });
+
+      if (errors.length > 0) {
+        setServerError(errors.join(" "));
+        e.target.value = ""; // Reset input
+        return;
+      }
+
       // Append new files to existing selected images
-      const updatedFiles = [...selectedImages, ...newFiles];
+      const updatedFiles = [...selectedImages, ...validFiles];
       const updatedPreviews = [
         ...imagePreviews,
-        ...newFiles.map((file) => URL.createObjectURL(file)),
+        ...validFiles.map((file) => URL.createObjectURL(file)),
       ];
 
       setSelectedImages(updatedFiles);
@@ -252,7 +298,7 @@ export default function CreateProductPage() {
         }))
       );
 
-      // Validate and filter variants if product type is variant
+      // Validate and prepare variants based on product type
       let validVariants: CreateProductVariantData[] | undefined = undefined;
       if (values.product_type === "variant") {
         if (variants.length === 0) {
@@ -300,6 +346,36 @@ export default function CreateProductPage() {
           setIsSubmitting(false);
           return;
         }
+      } else if (values.product_type === "simple") {
+        // For simple products, create a single variant with pricing
+        if (
+          !simpleProductPricing.sku ||
+          simpleProductPricing.sku.trim() === ""
+        ) {
+          setServerError("SKU is required for simple products.");
+          setIsSubmitting(false);
+          return;
+        }
+        if (!simpleProductPricing.price || simpleProductPricing.price <= 0) {
+          setServerError(
+            "Price is required and must be greater than 0 for simple products."
+          );
+          setIsSubmitting(false);
+          return;
+        }
+        validVariants = [
+          {
+            sku: simpleProductPricing.sku.trim(),
+            price: simpleProductPricing.price,
+            compare_at_price: simpleProductPricing.compare_at_price || null,
+            cost_price: simpleProductPricing.cost_price || null,
+            track_stock: true,
+            allow_backorder: false,
+            status: "active",
+            attribute_values: [], // Simple products don't have attribute values
+            inventory: [],
+          },
+        ];
       }
 
       const productData: CreateProductData = {
@@ -604,6 +680,96 @@ export default function CreateProductPage() {
                 </div>
               </div>
             </div>
+
+            {/* Pricing - Only show if product type is simple */}
+            {productType === "simple" && (
+              <div className="rounded-lg border bg-white p-6">
+                <h2 className="mb-4 text-lg font-semibold">Pricing</h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">
+                      SKU <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={simpleProductPricing.sku}
+                      onChange={(e) =>
+                        setSimpleProductPricing({
+                          ...simpleProductPricing,
+                          sku: e.target.value,
+                        })
+                      }
+                      className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      placeholder="e.g., PRODUCT-001"
+                    />
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">
+                        Price <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={simpleProductPricing.price || ""}
+                        onChange={(e) =>
+                          setSimpleProductPricing({
+                            ...simpleProductPricing,
+                            price: e.target.value ? Number(e.target.value) : 0,
+                          })
+                        }
+                        className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">
+                        Compare At Price
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={simpleProductPricing.compare_at_price || ""}
+                        onChange={(e) =>
+                          setSimpleProductPricing({
+                            ...simpleProductPricing,
+                            compare_at_price: e.target.value
+                              ? Number(e.target.value)
+                              : null,
+                          })
+                        }
+                        className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">
+                        Cost Price
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={simpleProductPricing.cost_price || ""}
+                        onChange={(e) =>
+                          setSimpleProductPricing({
+                            ...simpleProductPricing,
+                            cost_price: e.target.value
+                              ? Number(e.target.value)
+                              : null,
+                          })
+                        }
+                        className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Variants - Only show if product type is variant */}
             {productType === "variant" && (
