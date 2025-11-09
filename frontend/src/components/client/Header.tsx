@@ -98,9 +98,9 @@ export default function Header() {
           {/* Search Bar - Centered */}
           <form
             onSubmit={handleSearch}
-            className="flex-1 w-full sm:w-auto max-w-2xl sm:mx-4 lg:mx-8"
+            className="flex-1 w-full sm:w-auto max-w-2xl sm:mx-4 lg:mx-8 relative"
           >
-            <div className="flex items-center bg-[#FFF9C4] rounded-md overflow-hidden">
+            <div className="flex items-center bg-[#FFF9C4] rounded-md overflow-visible">
               <input
                 type="text"
                 value={searchQuery}
@@ -108,16 +108,43 @@ export default function Header() {
                 placeholder="Search for Products"
                 className="flex-1 px-2 sm:px-4 py-2 sm:py-3 bg-transparent border-none outline-none text-black placeholder:text-gray-600 text-sm sm:text-base"
               />
-              <div className="relative">
+              <div className="relative z-[100]">
                 <button
                   type="button"
-                  onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
-                  className="px-2 sm:px-4 py-2 sm:py-3 border-l border-[#E5E5E5] text-xs sm:text-sm text-black hover:bg-[#FFC107] transition-colors whitespace-nowrap"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowCategoryDropdown(!showCategoryDropdown);
+                  }}
+                  className={`px-2 sm:px-4 py-2 sm:py-3 border-l border-[#E5E5E5] text-xs sm:text-sm transition-colors whitespace-nowrap ${
+                    selectedCategory
+                      ? "bg-[#FFC107] text-black font-medium"
+                      : "text-black hover:bg-[#FFC107]"
+                  }`}
                 >
-                  <span className="hidden sm:inline">All Categories</span>
-                  <span className="sm:hidden">All</span>
+                  {selectedCategory ? (
+                    <>
+                      <span className="hidden sm:inline max-w-[120px] truncate">
+                        {categories.find(
+                          (cat) => cat.id.toString() === selectedCategory
+                        )?.name || "All Categories"}
+                      </span>
+                      <span className="sm:hidden max-w-[60px] truncate">
+                        {categories.find(
+                          (cat) => cat.id.toString() === selectedCategory
+                        )?.name || "All"}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="hidden sm:inline">All Categories</span>
+                      <span className="sm:hidden">All</span>
+                    </>
+                  )}
                   <svg
-                    className="inline-block ml-1 w-3 h-3 sm:w-4 sm:h-4"
+                    className={`inline-block ml-1 w-3 h-3 sm:w-4 sm:h-4 transition-transform ${
+                      showCategoryDropdown ? "rotate-180" : ""
+                    }`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -131,30 +158,47 @@ export default function Header() {
                   </svg>
                 </button>
                 {showCategoryDropdown && (
-                  <div className="absolute right-0 mt-1 w-48 sm:w-56 bg-white border border-[#E5E5E5] rounded-md shadow-lg z-50 max-h-96 overflow-y-auto">
+                  <div
+                    className="absolute right-0 top-full mt-1 w-48 sm:w-56 bg-white border-2 border-gray-400 rounded-md shadow-2xl z-[100] max-h-96 overflow-y-auto"
+                    style={{
+                      position: "absolute",
+                      top: "100%",
+                      right: "0",
+                      marginTop: "4px",
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setSelectedCategory("");
                         setShowCategoryDropdown(false);
                       }}
-                      className="w-full text-left px-4 py-2 hover:bg-[#F5F5F5] text-sm"
+                      className="w-full text-left px-4 py-2 hover:bg-[#F5F5F5] text-sm font-semibold border-b border-gray-200"
                     >
                       All Categories
                     </button>
-                    {categories.map((category) => (
-                      <button
-                        key={category.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedCategory(category.id.toString());
-                          setShowCategoryDropdown(false);
-                        }}
-                        className="w-full text-left px-4 py-2 hover:bg-[#F5F5F5] text-sm"
-                      >
-                        {category.name}
-                      </button>
-                    ))}
+                    {categories.length > 0 ? (
+                      categories.map((category) => (
+                        <button
+                          key={category.id}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedCategory(category.id.toString());
+                            setShowCategoryDropdown(false);
+                          }}
+                          className="w-full text-left px-4 py-2 hover:bg-[#F5F5F5] text-sm"
+                        >
+                          {category.name}
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-4 py-2 text-sm text-gray-500">
+                        No categories
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

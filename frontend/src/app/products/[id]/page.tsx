@@ -198,18 +198,6 @@ export default function ProductDetailPage() {
                 <p className="text-zinc-700 mb-6">{product.short_description}</p>
               )}
 
-              {product.description && (
-                <div className="mb-6">
-                  <h3 className="font-semibold text-zinc-900 mb-2">
-                    Description
-                  </h3>
-                  <div
-                    className="text-zinc-700 prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: product.description }}
-                  />
-                </div>
-              )}
-
               {/* Variant Selection */}
               {variants.length > 1 && (
                 <div className="mb-6">
@@ -277,6 +265,24 @@ export default function ProductDetailPage() {
               )}
             </div>
           </div>
+
+          {/* Product Description - Bottom of Page */}
+          {product.description && (
+            <div className="mt-12 pt-8 border-t border-zinc-200">
+              <div className="max-w-4xl mx-auto">
+                <label className="mb-1 block text-sm font-medium text-zinc-900">
+                  Description
+                </label>
+                <div
+                  className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700 prose prose-sm max-w-none"
+                  style={{
+                    minHeight: "200px",
+                  }}
+                  dangerouslySetInnerHTML={{ __html: product.description }}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </main>
       <Footer />
