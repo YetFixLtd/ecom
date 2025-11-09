@@ -99,8 +99,11 @@ export default function OrdersPage() {
                     <div>
                       <div className="flex items-center gap-4 mb-2">
                         <h3 className="text-lg font-semibold text-zinc-900">
-                          {order.order_number}
+                          Order #{order.order_number}
                         </h3>
+                        <span className="text-sm text-zinc-500">
+                          ID: {order.id}
+                        </span>
                         <span
                           className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
                             order.status
@@ -118,12 +121,25 @@ export default function OrdersPage() {
                       <p className="text-sm text-zinc-500">
                         {order.items.length} item(s)
                       </p>
+                      {order.shipping_address?.phone && (
+                        <p className="text-sm text-zinc-500">
+                          Phone: {order.shipping_address.phone}
+                        </p>
+                      )}
+                      {!order.shipping_address?.phone &&
+                        order.billing_address?.phone && (
+                          <p className="text-sm text-zinc-500">
+                            Phone: {order.billing_address.phone}
+                          </p>
+                        )}
                     </div>
                     <div className="text-right">
                       <p className="text-2xl font-bold text-zinc-900">
-                        ${order.grand_total.toFixed(2)}
+                        ৳{order.grand_total.toFixed(2)}
                       </p>
-                      <p className="text-sm text-zinc-500">{order.currency}</p>
+                      <p className="text-sm text-zinc-500">
+                        {order.currency === "USD" ? "BDT" : order.currency}
+                      </p>
                     </div>
                   </div>
                 </Link>

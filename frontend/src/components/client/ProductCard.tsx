@@ -8,11 +8,12 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
-  const imageUrl = getImageUrl(product.primary_image?.url) || "/placeholder-product.jpg";
+  const imageUrl =
+    getImageUrl(product.primary_image?.url) || "/placeholder-product.jpg";
   const priceDisplay =
     product.min_price === product.max_price
-      ? `$${product.min_price?.toFixed(2)}`
-      : `$${product.min_price?.toFixed(2)} - $${product.max_price?.toFixed(2)}`;
+      ? `৳${product.min_price?.toFixed(2)}`
+      : `৳${product.min_price?.toFixed(2)} - ৳${product.max_price?.toFixed(2)}`;
 
   return (
     <Link
@@ -46,7 +47,9 @@ export default function ProductCard({ product }: ProductCardProps) {
           </p>
         )}
         <div className="flex items-center justify-between">
-          <span className="text-lg font-bold text-zinc-900">{priceDisplay}</span>
+          <span className="text-lg font-bold text-zinc-900">
+            {priceDisplay}
+          </span>
           {product.min_price && product.max_price && (
             <span className="text-sm text-zinc-500">
               {product.variants?.length || 0} variant
@@ -58,4 +61,3 @@ export default function ProductCard({ product }: ProductCardProps) {
     </Link>
   );
 }
-

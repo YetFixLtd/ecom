@@ -17,7 +17,9 @@ export default function ProductDetailPage() {
   const productId = parseInt(params.id as string);
   const [product, setProduct] = useState<ClientProduct | null>(null);
   const [variants, setVariants] = useState<ProductVariant[]>([]);
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
+    null
+  );
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [addingToCart, setAddingToCart] = useState(false);
@@ -179,23 +181,25 @@ export default function ProductDetailPage() {
               <div className="mb-6">
                 <div className="flex items-center gap-4 mb-2">
                   <span className="text-3xl font-bold text-zinc-900">
-                    ${price.toFixed(2)}
+                    ৳{price.toFixed(2)}
                   </span>
                   {comparePrice && comparePrice > price && (
                     <span className="text-xl text-zinc-500 line-through">
-                      ${comparePrice.toFixed(2)}
+                      ৳{comparePrice.toFixed(2)}
                     </span>
                   )}
                 </div>
                 {comparePrice && comparePrice > price && (
                   <span className="text-sm text-red-600">
-                    Save ${(comparePrice - price).toFixed(2)}
+                    Save ৳{(comparePrice - price).toFixed(2)}
                   </span>
                 )}
               </div>
 
               {product.short_description && (
-                <p className="text-zinc-700 mb-6">{product.short_description}</p>
+                <p className="text-zinc-700 mb-6">
+                  {product.short_description}
+                </p>
               )}
 
               {/* Variant Selection */}
@@ -216,10 +220,12 @@ export default function ProductDetailPage() {
                   >
                     {variants.map((variant) => (
                       <option key={variant.id} value={variant.id}>
-                        {variant.sku} - ${variant.price.toFixed(2)}
+                        {variant.sku} - ৳{variant.price.toFixed(2)}
                         {variant.attributes &&
                           variant.attributes.length > 0 &&
-                          ` (${variant.attributes.map((a) => a.value).join(", ")})`}
+                          ` (${variant.attributes
+                            .map((a) => a.value)
+                            .join(", ")})`}
                       </option>
                     ))}
                   </select>
@@ -235,7 +241,9 @@ export default function ProductDetailPage() {
                   type="number"
                   min="1"
                   value={quantity}
-                  onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                  onChange={(e) =>
+                    setQuantity(Math.max(1, parseInt(e.target.value) || 1))
+                  }
                   className="w-20 px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-500"
                 />
                 <button
@@ -248,38 +256,161 @@ export default function ProductDetailPage() {
               </div>
 
               {/* Inventory Info */}
-              {selectedVariant?.inventory && selectedVariant.inventory.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="font-semibold text-zinc-900 mb-2">
-                    Availability
-                  </h3>
-                  <div className="space-y-2">
-                    {selectedVariant.inventory.map((inv, index) => (
-                      <div key={index} className="text-sm text-zinc-700">
-                        {inv.warehouse_name || `Warehouse ${inv.warehouse_id}`}:{" "}
-                        {inv.available} available
-                      </div>
-                    ))}
+              {selectedVariant?.inventory &&
+                selectedVariant.inventory.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="font-semibold text-zinc-900 mb-2">
+                      Availability
+                    </h3>
+                    <div className="space-y-2">
+                      {selectedVariant.inventory.map((inv, index) => (
+                        <div key={index} className="text-sm text-zinc-700">
+                          {inv.warehouse_name ||
+                            `Warehouse ${inv.warehouse_id}`}
+                          : {inv.available} available
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
             </div>
           </div>
 
           {/* Product Description - Bottom of Page */}
           {product.description && (
-            <div className="mt-12 pt-8 border-t border-zinc-200">
-              <div className="max-w-4xl mx-auto">
+            <div className="mt-12 pt-8 border-t border-zinc-200 w-full">
+              <div className="w-full">
                 <label className="mb-1 block text-sm font-medium text-zinc-900">
                   Description
                 </label>
                 <div
-                  className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700 prose prose-sm max-w-none"
+                  className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-700"
                   style={{
                     minHeight: "200px",
                   }}
-                  dangerouslySetInnerHTML={{ __html: product.description }}
-                />
+                >
+                  <style
+                    dangerouslySetInnerHTML={{
+                      __html: `
+                      #product-description-content table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin: 1rem 0;
+                        border: 1px solid #d1d5db;
+                      }
+                      #product-description-content thead {
+                        background-color: #f9fafb;
+                      }
+                      #product-description-content th {
+                        padding: 0.75rem;
+                        text-align: left;
+                        font-weight: 600;
+                        border: 1px solid #d1d5db;
+                        background-color: #f3f4f6;
+                      }
+                      #product-description-content td {
+                        padding: 0.75rem;
+                        border: 1px solid #d1d5db;
+                      }
+                      #product-description-content tr:nth-child(even) {
+                        background-color: #f9fafb;
+                      }
+                      #product-description-content tr:hover {
+                        background-color: #f3f4f6;
+                      }
+                      #product-description-content h1, 
+                      #product-description-content h2, 
+                      #product-description-content h3, 
+                      #product-description-content h4, 
+                      #product-description-content h5, 
+                      #product-description-content h6 {
+                        margin-top: 1.5rem;
+                        margin-bottom: 0.75rem;
+                        font-weight: 600;
+                        line-height: 1.25;
+                        color: #111827;
+                      }
+                      #product-description-content h1 {
+                        font-size: 2rem;
+                      }
+                      #product-description-content h2 {
+                        font-size: 1.5rem;
+                      }
+                      #product-description-content h3 {
+                        font-size: 1.25rem;
+                      }
+                      #product-description-content p {
+                        margin-bottom: 1rem;
+                        line-height: 1.75;
+                        color: #374151;
+                      }
+                      #product-description-content ul, 
+                      #product-description-content ol {
+                        margin: 1rem 0;
+                        padding-left: 2rem;
+                      }
+                      #product-description-content li {
+                        margin: 0.5rem 0;
+                        color: #374151;
+                      }
+                      #product-description-content a {
+                        color: #2563eb;
+                        text-decoration: underline;
+                      }
+                      #product-description-content a:hover {
+                        color: #1d4ed8;
+                      }
+                      #product-description-content img {
+                        max-width: 100%;
+                        height: auto;
+                        border-radius: 0.375rem;
+                        margin: 1rem 0;
+                      }
+                      #product-description-content blockquote {
+                        border-left: 4px solid #d1d5db;
+                        padding-left: 1rem;
+                        margin: 1rem 0;
+                        font-style: italic;
+                        color: #6b7280;
+                      }
+                      #product-description-content code {
+                        background-color: #f3f4f6;
+                        padding: 0.125rem 0.375rem;
+                        border-radius: 0.25rem;
+                        font-size: 0.875em;
+                        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+                      }
+                      #product-description-content pre {
+                        background-color: #1f2937;
+                        color: #f9fafb;
+                        padding: 1rem;
+                        border-radius: 0.375rem;
+                        overflow-x: auto;
+                        margin: 1rem 0;
+                      }
+                      #product-description-content pre code {
+                        background-color: transparent;
+                        padding: 0;
+                        color: inherit;
+                      }
+                      #product-description-content strong {
+                        font-weight: 600;
+                      }
+                      #product-description-content em {
+                        font-style: italic;
+                      }
+                    `,
+                    }}
+                  />
+                  <div
+                    id="product-description-content"
+                    className="prose prose-sm max-w-none w-full"
+                    style={{
+                      color: "#374151",
+                    }}
+                    dangerouslySetInnerHTML={{ __html: product.description }}
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -289,4 +420,3 @@ export default function ProductDetailPage() {
     </div>
   );
 }
-

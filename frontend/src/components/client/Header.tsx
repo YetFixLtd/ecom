@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { getUserTokenFromCookies } from "@/lib/cookies";
 import { getCart } from "@/lib/apis/client/cart";
 import { getCategories } from "@/lib/apis/client/categories";
+import { logout } from "@/lib/apis/auth";
 import type { Category } from "@/types/client";
 
 export default function Header() {
@@ -17,6 +18,8 @@ export default function Header() {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   async function loadCategories() {
     try {
@@ -26,6 +29,25 @@ export default function Header() {
       console.error("Error loading categories:", error);
     }
   }
+
+  // Close user menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        userMenuRef.current &&
+        !userMenuRef.current.contains(event.target as Node)
+      ) {
+        setShowUserMenu(false);
+      }
+    }
+
+    if (showUserMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  }, [showUserMenu]);
 
   useEffect(() => {
     async function loadCart() {
@@ -54,6 +76,26 @@ export default function Header() {
     router.push(`/products?${params.toString()}`);
   }
 
+  async function handleLogout() {
+    try {
+      const token = await getUserTokenFromCookies();
+      if (token) {
+        await logout(token);
+      }
+      setIsAuthenticated(false);
+      setCartCount(0);
+      setCartTotal(0);
+      router.push("/");
+    } catch (error) {
+      console.error("Error logging out:", error);
+      // Even if logout fails, clear local state
+      setIsAuthenticated(false);
+      setCartCount(0);
+      setCartTotal(0);
+      router.push("/");
+    }
+  }
+
   return (
     <header className="bg-white border-b border-[#E5E5E5] relative z-30">
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
@@ -67,7 +109,7 @@ export default function Header() {
               Ecom
               <span className="text-[#FFC107]">.</span>
             </Link>
-            {/* Mobile Cart - shown on small screens */}
+            {/* Mobile Cart and Auth - shown on small screens */}
             <div className="flex items-center gap-2 sm:hidden">
               <Link
                 href="/cart"
@@ -92,6 +134,74 @@ export default function Header() {
                   </span>
                 )}
               </Link>
+              {/* User Menu - Mobile */}
+              {isAuthenticated ? (
+                <div className="relative" ref={userMenuRef}>
+                  <button
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="p-2 text-black hover:text-[#FFC107] transition-colors"
+                    aria-label="User menu"
+                  >
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      />
+                    </svg>
+                  </button>
+                  {showUserMenu && (
+                    <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-[#E5E5E5] rounded-md shadow-lg z-[100]">
+                      <div className="py-1">
+                        <Link
+                          href="/profile"
+                          onClick={() => setShowUserMenu(false)}
+                          className="block px-4 py-2 text-sm text-black hover:bg-[#F5F5F5] transition-colors"
+                        >
+                          My Profile
+                        </Link>
+                        <Link
+                          href="/orders"
+                          onClick={() => setShowUserMenu(false)}
+                          className="block px-4 py-2 text-sm text-black hover:bg-[#F5F5F5] transition-colors"
+                        >
+                          My Orders
+                        </Link>
+                        <Link
+                          href="/addresses"
+                          onClick={() => setShowUserMenu(false)}
+                          className="block px-4 py-2 text-sm text-black hover:bg-[#F5F5F5] transition-colors"
+                        >
+                          My Addresses
+                        </Link>
+                        <div className="border-t border-[#E5E5E5] my-1"></div>
+                        <button
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            handleLogout();
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-black hover:bg-[#F5F5F5] transition-colors"
+                        >
+                          Logout
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Link
+                  href="/login"
+                  className="text-sm text-black hover:text-[#FFC107] transition-colors px-2"
+                >
+                  Login
+                </Link>
+              )}
             </div>
           </div>
 
@@ -251,10 +361,71 @@ export default function Header() {
             </Link>
             {isAuthenticated && cartTotal > 0 && (
               <span className="text-sm font-semibold text-black hidden md:inline">
-                ${cartTotal.toFixed(2)}
+                ৳{cartTotal.toFixed(2)}
               </span>
             )}
-            {!isAuthenticated && (
+
+            {/* User Menu - Desktop */}
+            {isAuthenticated ? (
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="p-2 text-black hover:text-[#FFC107] transition-colors"
+                  aria-label="User menu"
+                >
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
+                  </svg>
+                </button>
+                {showUserMenu && (
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-[#E5E5E5] rounded-md shadow-lg z-[100]">
+                    <div className="py-1">
+                      <Link
+                        href="/profile"
+                        onClick={() => setShowUserMenu(false)}
+                        className="block px-4 py-2 text-sm text-black hover:bg-[#F5F5F5] transition-colors"
+                      >
+                        My Profile
+                      </Link>
+                      <Link
+                        href="/orders"
+                        onClick={() => setShowUserMenu(false)}
+                        className="block px-4 py-2 text-sm text-black hover:bg-[#F5F5F5] transition-colors"
+                      >
+                        My Orders
+                      </Link>
+                      <Link
+                        href="/addresses"
+                        onClick={() => setShowUserMenu(false)}
+                        className="block px-4 py-2 text-sm text-black hover:bg-[#F5F5F5] transition-colors"
+                      >
+                        My Addresses
+                      </Link>
+                      <div className="border-t border-[#E5E5E5] my-1"></div>
+                      <button
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          handleLogout();
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-black hover:bg-[#F5F5F5] transition-colors"
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
               <Link
                 href="/login"
                 className="text-sm text-black hover:text-[#FFC107] transition-colors"

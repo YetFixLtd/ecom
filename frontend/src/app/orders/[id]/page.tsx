@@ -94,10 +94,10 @@ export default function OrderDetailPage() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h1 className="text-2xl font-bold text-zinc-900">
-                  Order {order.order_number}
+                  Order #{order.order_number}
                 </h1>
                 <p className="text-sm text-zinc-500 mt-1">
-                  Placed on:{" "}
+                  Order ID: {order.id} | Placed on:{" "}
                   {order.placed_at
                     ? new Date(order.placed_at).toLocaleString()
                     : new Date(order.created_at).toLocaleString()}
@@ -130,19 +130,30 @@ export default function OrderDetailPage() {
                           {item.product_name}
                         </h3>
                         <p className="text-sm text-zinc-500">
-                          SKU: {item.variant_sku}
+                          Item ID: {item.id} | SKU: {item.variant_sku}
                         </p>
                         <p className="text-sm text-zinc-500">
-                          Quantity: {item.quantity}
+                          Quantity: {item.quantity} | Variant ID:{" "}
+                          {item.variant_id}
                         </p>
                       </div>
                       <div className="text-right">
                         <p className="font-semibold text-zinc-900">
-                          ${item.total.toFixed(2)}
+                          ৳{item.total.toFixed(2)}
                         </p>
                         <p className="text-sm text-zinc-500">
-                          ${item.unit_price.toFixed(2)} each
+                          ৳{item.unit_price.toFixed(2)} each
                         </p>
+                        {item.discount_total > 0 && (
+                          <p className="text-xs text-red-600">
+                            Discount: -৳{item.discount_total.toFixed(2)}
+                          </p>
+                        )}
+                        {item.tax_total > 0 && (
+                          <p className="text-xs text-zinc-500">
+                            Tax: ৳{item.tax_total.toFixed(2)}
+                          </p>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -154,7 +165,23 @@ export default function OrderDetailPage() {
                   <h2 className="text-xl font-bold text-zinc-900 mb-4">
                     Billing Address
                   </h2>
-                  <p className="text-zinc-700">{order.billing_address.full_address}</p>
+                  <div className="space-y-2">
+                    {order.billing_address.contact_name && (
+                      <p className="text-zinc-700">
+                        <span className="font-medium">Contact:</span>{" "}
+                        {order.billing_address.contact_name}
+                      </p>
+                    )}
+                    {order.billing_address.phone && (
+                      <p className="text-zinc-700">
+                        <span className="font-medium">Phone:</span>{" "}
+                        {order.billing_address.phone}
+                      </p>
+                    )}
+                    <p className="text-zinc-700">
+                      {order.billing_address.full_address}
+                    </p>
+                  </div>
                 </div>
               )}
 
@@ -163,7 +190,23 @@ export default function OrderDetailPage() {
                   <h2 className="text-xl font-bold text-zinc-900 mb-4">
                     Shipping Address
                   </h2>
-                  <p className="text-zinc-700">{order.shipping_address.full_address}</p>
+                  <div className="space-y-2">
+                    {order.shipping_address.contact_name && (
+                      <p className="text-zinc-700">
+                        <span className="font-medium">Contact:</span>{" "}
+                        {order.shipping_address.contact_name}
+                      </p>
+                    )}
+                    {order.shipping_address.phone && (
+                      <p className="text-zinc-700">
+                        <span className="font-medium">Phone:</span>{" "}
+                        {order.shipping_address.phone}
+                      </p>
+                    )}
+                    <p className="text-zinc-700">
+                      {order.shipping_address.full_address}
+                    </p>
+                  </div>
                   {order.shipping_method && (
                     <div className="mt-4 pt-4 border-t border-zinc-200">
                       <p className="text-sm text-zinc-500">Shipping Method</p>
@@ -184,33 +227,35 @@ export default function OrderDetailPage() {
                 <div className="space-y-2 mb-4">
                   <div className="flex justify-between text-zinc-700">
                     <span>Subtotal</span>
-                    <span>${order.subtotal.toFixed(2)}</span>
+                    <span>৳{order.subtotal.toFixed(2)}</span>
                   </div>
                   {order.discount_total > 0 && (
                     <div className="flex justify-between text-red-600">
                       <span>Discount</span>
-                      <span>-${order.discount_total.toFixed(2)}</span>
+                      <span>-৳{order.discount_total.toFixed(2)}</span>
                     </div>
                   )}
                   {order.shipping_total > 0 && (
                     <div className="flex justify-between text-zinc-700">
                       <span>Shipping</span>
-                      <span>${order.shipping_total.toFixed(2)}</span>
+                      <span>৳{order.shipping_total.toFixed(2)}</span>
                     </div>
                   )}
                   {order.tax_total > 0 && (
                     <div className="flex justify-between text-zinc-700">
                       <span>Tax</span>
-                      <span>${order.tax_total.toFixed(2)}</span>
+                      <span>৳{order.tax_total.toFixed(2)}</span>
                     </div>
                   )}
                 </div>
                 <div className="border-t border-zinc-200 pt-4">
                   <div className="flex justify-between text-lg font-bold text-zinc-900">
                     <span>Total</span>
-                    <span>${order.grand_total.toFixed(2)}</span>
+                    <span>৳{order.grand_total.toFixed(2)}</span>
                   </div>
-                  <p className="text-sm text-zinc-500 mt-1">{order.currency}</p>
+                  <p className="text-sm text-zinc-500 mt-1">
+                    {order.currency === "USD" ? "BDT" : order.currency}
+                  </p>
                 </div>
               </div>
             </div>
@@ -221,4 +266,3 @@ export default function OrderDetailPage() {
     </div>
   );
 }
-

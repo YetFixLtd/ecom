@@ -10,7 +10,7 @@ export default function NewsletterSignup() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
-    
+
     // TODO: Implement newsletter signup API call
     // For now, just simulate success
     setTimeout(() => {
@@ -41,7 +41,8 @@ export default function NewsletterSignup() {
               />
             </svg>
             <p className="text-black font-medium text-sm md:text-base">
-              Sign up to Newsletter ...and receive $20 coupon for first shopping.
+              Sign up to Newsletter ...and receive ৳200 coupon for first
+              shopping.
             </p>
           </div>
 
@@ -60,11 +61,7 @@ export default function NewsletterSignup() {
               disabled={submitting || submitted}
               className="bg-gray-800 text-white px-6 py-2 rounded-md hover:bg-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold whitespace-nowrap"
             >
-              {submitting
-                ? "Signing..."
-                : submitted
-                ? "Signed Up!"
-                : "Sign Up"}
+              {submitting ? "Signing..." : submitted ? "Signed Up!" : "Sign Up"}
             </button>
           </form>
         </div>
@@ -72,4 +69,3 @@ export default function NewsletterSignup() {
     </section>
   );
 }
-

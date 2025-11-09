@@ -16,7 +16,9 @@ export default function CheckoutPage() {
   const [cart, setCart] = useState<Cart | null>(null);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [billingAddressId, setBillingAddressId] = useState<number | null>(null);
-  const [shippingAddressId, setShippingAddressId] = useState<number | null>(null);
+  const [shippingAddressId, setShippingAddressId] = useState<number | null>(
+    null
+  );
   const [shippingMethodId, setShippingMethodId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -231,7 +233,10 @@ export default function CheckoutPage() {
                         type="text"
                         value={newAddress.line1}
                         onChange={(e) =>
-                          setNewAddress({ ...newAddress, line1: e.target.value })
+                          setNewAddress({
+                            ...newAddress,
+                            line1: e.target.value,
+                          })
                         }
                         className="w-full px-3 py-2 border border-zinc-300 rounded-md"
                         required
@@ -297,7 +302,7 @@ export default function CheckoutPage() {
                 <div className="space-y-2 mb-4">
                   <div className="flex justify-between text-zinc-700">
                     <span>Subtotal</span>
-                    <span>${cart.subtotal.toFixed(2)}</span>
+                    <span>৳{cart.subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-zinc-700">
                     <span>Items</span>
@@ -307,12 +312,14 @@ export default function CheckoutPage() {
                 <div className="border-t border-zinc-200 pt-4 mb-4">
                   <div className="flex justify-between text-lg font-bold text-zinc-900">
                     <span>Total</span>
-                    <span>${cart.subtotal.toFixed(2)}</span>
+                    <span>৳{cart.subtotal.toFixed(2)}</span>
                   </div>
                 </div>
                 <button
                   onClick={handleSubmitOrder}
-                  disabled={submitting || !billingAddressId || !shippingAddressId}
+                  disabled={
+                    submitting || !billingAddressId || !shippingAddressId
+                  }
                   className="w-full bg-zinc-900 text-white px-6 py-3 rounded-md hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting ? "Processing..." : "Place Order"}
@@ -326,4 +333,3 @@ export default function CheckoutPage() {
     </div>
   );
 }
-

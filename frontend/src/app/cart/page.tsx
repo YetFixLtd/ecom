@@ -195,10 +195,10 @@ export default function CartPage() {
                         </div>
                         <div className="text-right">
                           <p className="font-semibold text-zinc-900">
-                            ${item.line_total.toFixed(2)}
+                            ৳{item.line_total.toFixed(2)}
                           </p>
                           <p className="text-sm text-zinc-500">
-                            ${item.unit_price.toFixed(2)} each
+                            ৳{item.unit_price.toFixed(2)} each
                           </p>
                         </div>
                         <button
@@ -222,7 +222,7 @@ export default function CartPage() {
                 <div className="space-y-2 mb-4">
                   <div className="flex justify-between text-zinc-700">
                     <span>Subtotal</span>
-                    <span>${cart.subtotal.toFixed(2)}</span>
+                    <span>৳{cart.subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-zinc-700">
                     <span>Items</span>
@@ -232,7 +232,7 @@ export default function CartPage() {
                 <div className="border-t border-zinc-200 pt-4 mb-4">
                   <div className="flex justify-between text-lg font-bold text-zinc-900">
                     <span>Total</span>
-                    <span>${cart.subtotal.toFixed(2)}</span>
+                    <span>৳{cart.subtotal.toFixed(2)}</span>
                   </div>
                 </div>
                 <Link

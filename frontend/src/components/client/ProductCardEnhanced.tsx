@@ -99,15 +99,15 @@ export default function ProductCardEnhanced({
           {comparePrice && comparePrice > price ? (
             <div className="flex items-baseline gap-2">
               <span className="text-lg font-bold text-[#DC2626]">
-                ${price.toFixed(2)}
+                ৳{price.toFixed(2)}
               </span>
               <span className="text-sm text-gray-500 line-through">
-                ${comparePrice.toFixed(2)}
+                ৳{comparePrice.toFixed(2)}
               </span>
             </div>
           ) : (
             <span className="text-lg font-bold text-black">
-              ${price.toFixed(2)}
+              ৳{price.toFixed(2)}
             </span>
           )}
         </div>
@@ -121,11 +121,7 @@ export default function ProductCardEnhanced({
         aria-label="Add to cart"
       >
         {addingToCart ? (
-          <svg
-            className="w-5 h-5 animate-spin"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
+          <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
             <circle
               className="opacity-25"
               cx="12"
@@ -159,4 +155,3 @@ export default function ProductCardEnhanced({
     </Link>
   );
 }
-
