@@ -14,30 +14,60 @@ import {
   clearCart,
 } from "@/lib/apis/client/cart";
 import { getUserTokenFromCookies } from "@/lib/cookies";
+import {
+  getGuestCart,
+  updateGuestCartItem,
+  removeGuestCartItem,
+  clearGuestCart,
+  getGuestCartForCheckout,
+} from "@/lib/utils/guestCart";
 import type { Cart, CartItem } from "@/types/client";
 
 export default function CartPage() {
   const router = useRouter();
   const [cart, setCart] = useState<Cart | null>(null);
   const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState<number | null>(null);
+  const [updating, setUpdating] = useState<number | string | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
 
   useEffect(() => {
     loadCart();
   }, []);
 
+  function notifyCartUpdate() {
+    // Dispatch event to update header cart count
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("guestCartUpdated"));
+    }
+  }
+
   async function loadCart() {
     const token = await getUserTokenFromCookies();
     if (!token) {
-      router.push("/login");
+      // Guest user - load from localStorage
+      setIsGuest(true);
+      try {
+        const guestCart = getGuestCartForCheckout();
+        if (guestCart.items.length > 0) {
+          setCart(guestCart);
+        } else {
+          setCart(null);
+        }
+      } catch (error) {
+        console.error("Error loading guest cart:", error);
+        setCart(null);
+      }
+      setLoading(false);
       return;
     }
 
+    setIsGuest(false);
     try {
       const response = await getCart(token);
       setCart(response.data);
     } catch (error) {
       console.error("Error loading cart:", error);
+      setCart(null);
     } finally {
       setLoading(false);
     }
@@ -47,11 +77,22 @@ export default function CartPage() {
     if (newQuantity < 1) return;
 
     const token = await getUserTokenFromCookies();
-    if (!token) return;
-
+    
     setUpdating(item.id);
     try {
-      await updateCartItem(token, item.id, { quantity: newQuantity });
+      if (token && !isGuest) {
+        await updateCartItem(token, item.id, { quantity: newQuantity });
+      } else {
+        // Guest cart - find item by variant_id and update
+        const guestCart = getGuestCart();
+        const guestItem = guestCart.items.find(
+          (gi) => gi.variant_id === item.variant_id
+        );
+        if (guestItem) {
+          updateGuestCartItem(guestItem.id, newQuantity);
+          notifyCartUpdate();
+        }
+      }
       await loadCart();
     } catch (error) {
       alert("Failed to update cart item");
@@ -60,14 +101,19 @@ export default function CartPage() {
     }
   }
 
-  async function handleRemoveItem(itemId: number) {
+  async function handleRemoveItem(itemId: number | string) {
     const token = await getUserTokenFromCookies();
-    if (!token) return;
 
     if (!confirm("Remove this item from cart?")) return;
 
     try {
-      await removeCartItem(token, itemId);
+      if (token && !isGuest) {
+        await removeCartItem(token, itemId as number);
+      } else {
+        // Guest cart - remove by item ID
+        removeGuestCartItem(itemId as string);
+        notifyCartUpdate();
+      }
       await loadCart();
     } catch (error) {
       alert("Failed to remove item");
@@ -76,12 +122,16 @@ export default function CartPage() {
 
   async function handleClearCart() {
     const token = await getUserTokenFromCookies();
-    if (!token) return;
 
     if (!confirm("Clear entire cart?")) return;
 
     try {
-      await clearCart(token);
+      if (token && !isGuest) {
+        await clearCart(token);
+      } else {
+        clearGuestCart();
+        notifyCartUpdate();
+      }
       await loadCart();
     } catch (error) {
       alert("Failed to clear cart");
@@ -143,8 +193,8 @@ export default function CartPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
               <div className="bg-white rounded-lg shadow-sm border border-zinc-200 divide-y divide-zinc-200">
-                {cart.items.map((item) => (
-                  <div key={item.id} className="p-6 flex gap-4">
+                {cart.items.map((item, index) => (
+                  <div key={isGuest ? `guest_${index}_${item.variant_id}` : item.id} className="p-6 flex gap-4">
                     {item.variant?.product?.primary_image && (
                       <div className="relative w-24 h-24 bg-zinc-100 rounded-lg overflow-hidden shrink-0">
                         <Image
@@ -202,7 +252,7 @@ export default function CartPage() {
                           </p>
                         </div>
                         <button
-                          onClick={() => handleRemoveItem(item.id)}
+                          onClick={() => handleRemoveItem(isGuest ? (item as any).guestItemId || item.id : item.id)}
                           className="text-red-600 hover:text-red-700 ml-4"
                         >
                           Remove

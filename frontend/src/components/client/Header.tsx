@@ -62,10 +62,47 @@ export default function Header() {
           setCartCount(0);
           setCartTotal(0);
         }
+      } else {
+        // Load guest cart from localStorage
+        setIsAuthenticated(false);
+        try {
+          const { getGuestCartCount, getGuestCartTotal } = await import("@/lib/utils/guestCart");
+          setCartCount(getGuestCartCount());
+          setCartTotal(getGuestCartTotal());
+        } catch {
+          setCartCount(0);
+          setCartTotal(0);
+        }
       }
     }
     loadCart();
     loadCategories();
+    
+    // Listen for storage changes to update cart count when guest cart changes
+    if (typeof window !== "undefined") {
+      const handleCartUpdate = async () => {
+        const token = await getUserTokenFromCookies();
+        if (!token) {
+          try {
+            const { getGuestCartCount, getGuestCartTotal } = await import("@/lib/utils/guestCart");
+            setCartCount(getGuestCartCount());
+            setCartTotal(getGuestCartTotal());
+          } catch {
+            setCartCount(0);
+            setCartTotal(0);
+          }
+        }
+      };
+      
+      window.addEventListener("storage", handleCartUpdate);
+      // Also listen for custom event for same-tab updates
+      window.addEventListener("guestCartUpdated", handleCartUpdate);
+      
+      return () => {
+        window.removeEventListener("storage", handleCartUpdate);
+        window.removeEventListener("guestCartUpdated", handleCartUpdate);
+      };
+    }
   }, []);
 
   function handleSearch(e: React.FormEvent) {

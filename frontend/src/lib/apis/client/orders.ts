@@ -41,28 +41,30 @@ export async function getOrders(
 
 /**
  * Get a single order by ID
- * Requires authentication
+ * Supports both authenticated users and guest orders
  */
 export async function getOrder(
-  token: string,
-  id: number
+  id: number,
+  token?: string
 ): Promise<OrderResponse> {
+  const headers = token ? getAuthHeaders(token) : {};
   const response = await api.get(`/orders/${id}`, {
-    headers: getAuthHeaders(token),
+    headers,
   });
   return response.data;
 }
 
 /**
  * Create an order from the user's cart (checkout)
- * Requires authentication
+ * Supports both authenticated and guest checkout
  */
 export async function createOrder(
-  token: string,
-  data: CreateOrderRequest
+  data: CreateOrderRequest,
+  token?: string
 ): Promise<OrderResponse & { message: string }> {
+  const headers = token ? getAuthHeaders(token) : {};
   const response = await api.post("/orders", data, {
-    headers: getAuthHeaders(token),
+    headers,
   });
   return response.data;
 }

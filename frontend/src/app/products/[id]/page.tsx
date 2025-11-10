@@ -60,19 +60,39 @@ export default function ProductDetailPage() {
     if (!selectedVariant) return;
 
     const token = await getUserTokenFromCookies();
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-
+    
     setAddingToCart(true);
     try {
-      await addToCart(token, {
-        variant_id: selectedVariant.id,
-        quantity,
-      });
-      alert("Product added to cart!");
-      router.push("/cart");
+      if (token) {
+        // Authenticated user - use API
+        await addToCart(token, {
+          variant_id: selectedVariant.id,
+          quantity,
+        });
+        alert("Product added to cart!");
+        router.push("/cart");
+      } else {
+        // Guest user - use localStorage
+        const { addToGuestCart } = await import("@/lib/utils/guestCart");
+        addToGuestCart(
+          selectedVariant.id,
+          quantity,
+          selectedVariant.price,
+          {
+            id: selectedVariant.id,
+            sku: selectedVariant.sku,
+            price: selectedVariant.price,
+            product: {
+              id: product.id,
+              name: product.name,
+              slug: product.slug,
+              primary_image: product.primary_image,
+            },
+          }
+        );
+        alert("Product added to cart!");
+        router.push("/cart");
+      }
     } catch (error: any) {
       alert(error.response?.data?.message || "Failed to add to cart");
     } finally {

@@ -35,22 +35,40 @@ export default function ProductCardEnhanced({
     e.preventDefault();
     e.stopPropagation();
 
-    const token = await getUserTokenFromCookies();
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-
     // Get first available variant
     const variant = product.variants?.[0];
     if (!variant) return;
 
+    const token = await getUserTokenFromCookies();
+
     setAddingToCart(true);
     try {
-      await addToCart(token, {
-        variant_id: variant.id,
-        quantity: 1,
-      });
+      if (token) {
+        // Authenticated user - use API
+        await addToCart(token, {
+          variant_id: variant.id,
+          quantity: 1,
+        });
+      } else {
+        // Guest user - use localStorage
+        const { addToGuestCart } = await import("@/lib/utils/guestCart");
+        addToGuestCart(
+          variant.id,
+          1,
+          variant.price,
+          {
+            id: variant.id,
+            sku: variant.sku,
+            price: variant.price,
+            product: {
+              id: product.id,
+              name: product.name,
+              slug: product.slug,
+              primary_image: product.primary_image,
+            },
+          }
+        );
+      }
       // Optionally show a toast notification here
     } catch (error: any) {
       alert(error.response?.data?.message || "Failed to add to cart");

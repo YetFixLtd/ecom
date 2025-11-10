@@ -10,6 +10,7 @@ use App\Models\Order\Order;
 use App\Models\Order\OrderItem;
 use App\Models\Order\ShippingMethod;
 use App\Models\User\Address;
+use App\Models\Attribute\ProductVariant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -57,6 +58,7 @@ class OrderController extends Controller
 
     /**
      * Show a specific order.
+     * Supports both authenticated users and guest orders.
      *
      * @param Request $request
      * @param int $id
@@ -66,9 +68,15 @@ class OrderController extends Controller
     {
         $user = $request->user();
 
-        $order = Order::where('user_id', $user->id)
-            ->with(['billingAddress', 'shippingAddress', 'shippingMethod', 'items'])
-            ->findOrFail($id);
+        $query = Order::with(['billingAddress', 'shippingAddress', 'shippingMethod', 'items']);
+
+        if ($user) {
+            // Authenticated user - only show their own orders
+            $order = $query->where('user_id', $user->id)->findOrFail($id);
+        } else {
+            // Guest user - only show guest orders (user_id is null)
+            $order = $query->whereNull('user_id')->findOrFail($id);
+        }
 
         return response()->json([
             'data' => new OrderResource($order),
@@ -77,6 +85,7 @@ class OrderController extends Controller
 
     /**
      * Create order from cart (checkout).
+     * Supports both authenticated users and guest checkout.
      *
      * @param CreateOrderRequest $request
      * @return JsonResponse
@@ -85,37 +94,93 @@ class OrderController extends Controller
     {
         return DB::transaction(function () use ($request) {
             $user = $request->user();
+            $isGuest = !$user;
 
-            // Get user's open cart
-            $cart = Cart::where('user_id', $user->id)
-                ->where('status', 'open')
-                ->with(['items.variant.product'])
-                ->first();
+            if ($isGuest) {
+                // Guest checkout flow
+                // Create addresses on the fly
+                $billingAddress = Address::create([
+                    'user_id' => null,
+                    'name' => $request->billing_address['name'],
+                    'contact_name' => $request->billing_address['contact_name'] ?? null,
+                    'phone' => $request->billing_address['phone'] ?? null,
+                    'line1' => $request->billing_address['line1'],
+                    'line2' => $request->billing_address['line2'] ?? null,
+                    'city' => $request->billing_address['city'],
+                    'state_region' => $request->billing_address['state_region'] ?? null,
+                    'postal_code' => $request->billing_address['postal_code'] ?? null,
+                    'country_code' => $request->billing_address['country_code'],
+                ]);
 
-            if (!$cart) {
-                return response()->json([
-                    'message' => 'Validation failed.',
-                    'errors' => [
-                        'cart' => ['No active cart found.'],
-                    ],
-                ], 422);
+                $shippingAddress = Address::create([
+                    'user_id' => null,
+                    'name' => $request->shipping_address['name'],
+                    'contact_name' => $request->shipping_address['contact_name'] ?? null,
+                    'phone' => $request->shipping_address['phone'] ?? null,
+                    'line1' => $request->shipping_address['line1'],
+                    'line2' => $request->shipping_address['line2'] ?? null,
+                    'city' => $request->shipping_address['city'],
+                    'state_region' => $request->shipping_address['state_region'] ?? null,
+                    'postal_code' => $request->shipping_address['postal_code'] ?? null,
+                    'country_code' => $request->shipping_address['country_code'],
+                ]);
+
+                // Calculate subtotal from cart items
+                $subtotal = 0;
+                $cartItems = [];
+                foreach ($request->cart_items as $item) {
+                    $variant = ProductVariant::with('product')->findOrFail($item['variant_id']);
+                    $quantity = $item['quantity'];
+                    $unitPrice = $item['unit_price'];
+                    $lineTotal = $quantity * $unitPrice;
+                    $subtotal += $lineTotal;
+                    
+                    $cartItems[] = [
+                        'variant' => $variant,
+                        'qty' => $quantity,
+                        'unit_price' => $unitPrice,
+                        'line_total' => $lineTotal,
+                    ];
+                }
+
+                $currency = $request->currency ?? 'BDT';
+            } else {
+                // Authenticated user flow
+                // Get user's open cart
+                $cart = Cart::where('user_id', $user->id)
+                    ->where('status', 'open')
+                    ->with(['items.variant.product'])
+                    ->first();
+
+                if (!$cart) {
+                    return response()->json([
+                        'message' => 'Validation failed.',
+                        'errors' => [
+                            'cart' => ['No active cart found.'],
+                        ],
+                    ], 422);
+                }
+
+                if ($cart->items->isEmpty()) {
+                    return response()->json([
+                        'message' => 'Validation failed.',
+                        'errors' => [
+                            'cart' => ['Cart is empty.'],
+                        ],
+                    ], 422);
+                }
+
+                // Verify addresses belong to user
+                $billingAddress = Address::where('user_id', $user->id)
+                    ->findOrFail($request->billing_address_id);
+
+                $shippingAddress = Address::where('user_id', $user->id)
+                    ->findOrFail($request->shipping_address_id);
+
+                $subtotal = $cart->subtotal;
+                $currency = $cart->currency;
+                $cartItems = $cart->items;
             }
-
-            if ($cart->items->isEmpty()) {
-                return response()->json([
-                    'message' => 'Validation failed.',
-                    'errors' => [
-                        'cart' => ['Cart is empty.'],
-                    ],
-                ], 422);
-            }
-
-            // Verify addresses belong to user
-            $billingAddress = Address::where('user_id', $user->id)
-                ->findOrFail($request->billing_address_id);
-
-            $shippingAddress = Address::where('user_id', $user->id)
-                ->findOrFail($request->shipping_address_id);
 
             // Get shipping method if provided
             $shippingMethod = null;
@@ -126,7 +191,6 @@ class OrderController extends Controller
                     ->findOrFail($request->shipping_method_id);
 
                 // Calculate shipping cost (simplified - can be enhanced)
-                $subtotal = $cart->subtotal;
                 if ($shippingMethod->isFreeShippingForAmount($subtotal)) {
                     $shippingTotal = 0;
                 } else {
@@ -136,7 +200,6 @@ class OrderController extends Controller
             }
 
             // Calculate totals
-            $subtotal = $cart->subtotal;
             $discountTotal = 0; // Can be calculated from coupons/discounts
             $taxTotal = 0; // Can be calculated based on tax rules
             $grandTotal = $subtotal - $discountTotal + $shippingTotal + $taxTotal;
@@ -146,10 +209,10 @@ class OrderController extends Controller
 
             // Create order
             $order = Order::create([
-                'user_id' => $user->id,
+                'user_id' => $user?->id,
                 'order_number' => $orderNumber,
                 'status' => 'pending',
-                'currency' => $cart->currency,
+                'currency' => $currency,
                 'subtotal' => $subtotal,
                 'discount_total' => $discountTotal,
                 'shipping_total' => $shippingTotal,
@@ -162,8 +225,8 @@ class OrderController extends Controller
             ]);
 
             // Create order items from cart items
-            foreach ($cart->items as $cartItem) {
-                $variant = $cartItem->variant;
+            foreach ($cartItems as $cartItem) {
+                $variant = $isGuest ? $cartItem['variant'] : $cartItem->variant;
                 $product = $variant->product;
 
                 OrderItem::create([
@@ -171,16 +234,18 @@ class OrderController extends Controller
                     'variant_id' => $variant->id,
                     'product_name' => $product->name,
                     'variant_sku' => $variant->sku,
-                    'qty' => $cartItem->qty,
-                    'unit_price' => $cartItem->unit_price,
+                    'qty' => $isGuest ? $cartItem['qty'] : $cartItem->qty,
+                    'unit_price' => $isGuest ? $cartItem['unit_price'] : $cartItem->unit_price,
                     'discount_total' => 0,
                     'tax_total' => 0,
-                    'total' => $cartItem->line_total,
+                    'total' => $isGuest ? $cartItem['line_total'] : $cartItem->line_total,
                 ]);
             }
 
-            // Mark cart as converted
-            $cart->update(['status' => 'converted']);
+            // Mark cart as converted (only for authenticated users)
+            if (!$isGuest && isset($cart)) {
+                $cart->update(['status' => 'converted']);
+            }
 
             // Load relationships
             $order->load(['billingAddress', 'shippingAddress', 'shippingMethod', 'items']);

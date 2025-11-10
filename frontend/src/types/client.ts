@@ -305,9 +305,13 @@ export interface OrderResponse {
 }
 
 export interface CreateOrderRequest {
-  billing_address_id: number;
-  shipping_address_id: number;
+  billing_address_id?: number;
+  shipping_address_id?: number;
+  billing_address?: CreateAddressRequest;
+  shipping_address?: CreateAddressRequest;
   shipping_method_id?: number;
+  guest_email?: string;
+  guest_name?: string;
 }
 
 // ========================================

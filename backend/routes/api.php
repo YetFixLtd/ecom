@@ -95,9 +95,11 @@ Route::prefix('v1')->group(function () {
 
         // Orders
         Route::get('/orders', [OrderController::class, 'index'])->name('api.orders.index');
-        Route::post('/orders', [OrderController::class, 'store'])->name('api.orders.store');
-        Route::get('/orders/{id}', [OrderController::class, 'show'])->name('api.orders.show');
     });
+
+    // Guest checkout and order viewing - accessible without authentication
+    Route::post('/orders', [OrderController::class, 'store'])->name('api.orders.store');
+    Route::get('/orders/{id}', [OrderController::class, 'show'])->name('api.orders.show');
 
     // ========================================
     // Admin Authentication & Management Routes

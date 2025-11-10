@@ -9,6 +9,40 @@ import { getOrder } from "@/lib/apis/client/orders";
 import { getUserTokenFromCookies } from "@/lib/cookies";
 import type { Order } from "@/types/client";
 
+function OrderNavigation() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    async function checkAuth() {
+      const token = await getUserTokenFromCookies();
+      setIsAuthenticated(!!token);
+    }
+    checkAuth();
+  }, []);
+
+  return (
+    <div className="mb-4">
+      <Link
+        href="/"
+        className="text-blue-600 hover:text-blue-700 inline-block"
+      >
+        ← Back to Home
+      </Link>
+      {isAuthenticated && (
+        <>
+          {" | "}
+          <Link
+            href="/orders"
+            className="text-blue-600 hover:text-blue-700 inline-block"
+          >
+            View All Orders
+          </Link>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function OrderDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -22,16 +56,16 @@ export default function OrderDetailPage() {
 
   async function loadOrder() {
     const token = await getUserTokenFromCookies();
-    if (!token) {
-      router.push("/login");
-      return;
-    }
 
     try {
-      const response = await getOrder(token, orderId);
+      const response = await getOrder(orderId, token);
       setOrder(response.data);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading order:", error);
+      if (error.response?.status === 404) {
+        // Order not found - might be a guest order that doesn't exist
+        setOrder(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -83,12 +117,7 @@ export default function OrderDetailPage() {
       <Header />
       <main className="flex-1 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Link
-            href="/orders"
-            className="text-blue-600 hover:text-blue-700 mb-4 inline-block"
-          >
-            ← Back to Orders
-          </Link>
+          <OrderNavigation />
 
           <div className="bg-white rounded-lg shadow-sm border border-zinc-200 p-6 mb-8">
             <div className="flex items-center justify-between mb-4">
