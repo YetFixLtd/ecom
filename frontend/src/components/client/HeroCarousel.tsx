@@ -54,7 +54,7 @@ export default function HeroCarousel({ products }: HeroCarouselProps) {
     <div className="relative bg-white overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="lg:ml-80">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center relative">
             {/* Left Side - Text Content with fade transition */}
             <div
               className={`space-y-8 transition-opacity duration-500 ${
@@ -63,35 +63,43 @@ export default function HeroCarousel({ products }: HeroCarouselProps) {
               key={`content-${currentIndex}`}
             >
               <div>
-                <h1 className="text-6xl md:text-7xl font-black text-black mb-3 tracking-tight leading-tight">
-                  THE NEW
-                  <br />
-                  STANDARD
+                {currentProduct.brand && (
+                  <p className="text-sm md:text-base text-gray-500 font-medium mb-2 uppercase tracking-wide">
+                    {currentProduct.brand.name}
+                  </p>
+                )}
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-black mb-3 tracking-tight leading-tight">
+                  {currentProduct.name}
                 </h1>
-                <p className="text-lg md:text-xl text-gray-700 font-medium tracking-wide">
-                  UNDER FAVORABLE{" "}
-                  {currentProduct.name?.toUpperCase() || "SMARTWATCHES"}
-                </p>
+                {currentProduct.short_description && (
+                  <p className="text-base md:text-lg text-gray-700 font-medium mb-4 line-clamp-2">
+                    {currentProduct.short_description}
+                  </p>
+                )}
               </div>
               <div className="flex items-baseline gap-1">
                 <span className="text-lg md:text-xl text-gray-600 font-medium">
-                  FROM
+                  {currentProduct.min_price &&
+                  currentProduct.max_price &&
+                  currentProduct.min_price !== currentProduct.max_price
+                    ? "FROM"
+                    : ""}
                 </span>
-                <span className="text-6xl md:text-7xl font-black text-black">
+                <span className="text-5xl md:text-6xl lg:text-7xl font-black text-black">
                   {priceMain}
                 </span>
-                <span className="text-3xl md:text-4xl font-black text-black">
+                <span className="text-2xl md:text-3xl lg:text-4xl font-black text-black">
                   {priceDecimal.toString().padStart(2, "0")}
                 </span>
-                <span className="text-2xl md:text-3xl font-black text-black">
+                <span className="text-xl md:text-2xl lg:text-3xl font-black text-black">
                   ৳
                 </span>
               </div>
               <Link
                 href={`/products/${currentProduct.id}`}
-                className="inline-block bg-[#FFC107] text-black font-bold text-base px-10 py-4 rounded-md hover:bg-[#FFD700] transition-colors shadow-md"
+                className="inline-block bg-[#FFC107] text-black font-bold text-sm px-16 py-2 rounded-md hover:bg-[#FFD700] transition-colors shadow-md"
               >
-                Start Buying
+                Shop Now
               </Link>
             </div>
 
