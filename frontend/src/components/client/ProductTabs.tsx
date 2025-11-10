@@ -6,35 +6,17 @@ import ProductCardEnhanced from "./ProductCardEnhanced";
 import type { ClientProduct } from "@/types/client";
 
 export default function ProductTabs() {
-  const [activeTab, setActiveTab] = useState<"featured" | "onsale" | "toprated">(
-    "featured"
-  );
   const [products, setProducts] = useState<ClientProduct[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadProducts();
-  }, [activeTab]);
+  }, []);
 
   async function loadProducts() {
     setLoading(true);
     try {
-      let params: any = { per_page: 8 };
-      
-      if (activeTab === "featured") {
-        params.featured = true;
-      } else if (activeTab === "onsale") {
-        // For on sale, we'll get products with compare_at_price > price
-        // This is a simplified approach - you might want to add a sale filter to the API
-        params.sort = "price";
-        params.order = "asc";
-      } else if (activeTab === "toprated") {
-        // For top rated, we'll sort by created_at as a proxy
-        // You might want to add a rating system to the API
-        params.sort = "created_at";
-        params.order = "desc";
-      }
-
+      const params = { featured: true, per_page: 8 };
       const response = await getProducts(params);
       setProducts(response.data);
     } catch (error) {
@@ -48,48 +30,10 @@ export default function ProductTabs() {
   return (
     <section className="py-12 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Tab Navigation */}
-        <div className="flex items-center gap-8 border-b border-[#E5E5E5] mb-8">
-          <button
-            onClick={() => setActiveTab("featured")}
-            className={`pb-4 text-sm font-semibold transition-colors relative ${
-              activeTab === "featured"
-                ? "text-black"
-                : "text-gray-600 hover:text-black"
-            }`}
-          >
-            Featured
-            {activeTab === "featured" && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#FFC107]" />
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab("onsale")}
-            className={`pb-4 text-sm font-semibold transition-colors relative ${
-              activeTab === "onsale"
-                ? "text-black"
-                : "text-gray-600 hover:text-black"
-            }`}
-          >
-            On Sale
-            {activeTab === "onsale" && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#FFC107]" />
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab("toprated")}
-            className={`pb-4 text-sm font-semibold transition-colors relative ${
-              activeTab === "toprated"
-                ? "text-black"
-                : "text-gray-600 hover:text-black"
-            }`}
-          >
-            Top Rated
-            {activeTab === "toprated" && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#FFC107]" />
-            )}
-          </button>
-        </div>
+        {/* Section Heading */}
+        <h2 className="text-2xl md:text-3xl font-bold text-black mb-8">
+          Featured Products
+        </h2>
 
         {/* Product Grid */}
         {loading ? (
