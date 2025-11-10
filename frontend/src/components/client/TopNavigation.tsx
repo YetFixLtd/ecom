@@ -149,7 +149,6 @@ function CategorySubmenuItem({
 
 export default function TopNavigation() {
   const [showSuperDealsDropdown, setShowSuperDealsDropdown] = useState(false);
-  const [showDepartmentsDropdown, setShowDepartmentsDropdown] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
   const [expandedCategories, setExpandedCategories] = useState<Set<number>>(
     new Set()
@@ -174,14 +173,13 @@ export default function TopNavigation() {
     loadCategories();
   }, []);
 
-  // Close dropdown when clicking outside
+  // Close expanded categories when clicking outside (but keep menu visible)
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
         departmentsRef.current &&
         !departmentsRef.current.contains(event.target as Node)
       ) {
-        setShowDepartmentsDropdown(false);
         setExpandedCategories(new Set());
       }
     }
@@ -221,9 +219,6 @@ export default function TopNavigation() {
           {/* All Departments Dropdown */}
           <div className="relative" ref={departmentsRef}>
             <button
-              onClick={() =>
-                setShowDepartmentsDropdown(!showDepartmentsDropdown)
-              }
               className="flex items-center bg-[#FFC107] text-black font-bold px-4 py-2 rounded-md hover:bg-[#FFD700] transition-colors h-10"
             >
               <svg
@@ -241,8 +236,7 @@ export default function TopNavigation() {
               </svg>
               All Departments
             </button>
-            {showDepartmentsDropdown && (
-              <div className="absolute top-full left-0 w-80 bg-white border border-[#E5E5E5] shadow-xl z-50 mt-1 rounded-md">
+            <div className="absolute top-full left-0 w-80 bg-white border border-[#E5E5E5] shadow-xl z-50 mt-1 rounded-md">
                 <div className="py-2 max-h-[600px] overflow-y-auto">
                   {/* Special Items */}
                   {specialItems.map((item, index) => (
@@ -376,7 +370,6 @@ export default function TopNavigation() {
                   )}
                 </div>
               </div>
-            )}
           </div>
 
           <div className="relative">
