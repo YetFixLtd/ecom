@@ -88,9 +88,7 @@ export default function HeroCarousel({ products }: HeroCarouselProps) {
                 <span className="text-5xl md:text-6xl lg:text-7xl font-black text-black">
                   {priceMain}
                 </span>
-                <span className="text-2xl md:text-3xl lg:text-4xl font-black text-black">
-                  {priceDecimal.toString().padStart(2, "0")}
-                </span>
+
                 <span className="text-xl md:text-2xl lg:text-3xl font-black text-black">
                   ৳
                 </span>

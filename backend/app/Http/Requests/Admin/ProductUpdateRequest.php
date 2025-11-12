@@ -100,9 +100,9 @@ class ProductUpdateRequest extends ApiFormRequest
             'variants.*.width_mm' => ['nullable', 'integer', 'min:0'],
             'variants.*.height_mm' => ['nullable', 'integer', 'min:0'],
             'variants.*.status' => ['nullable', 'string', Rule::in(['active', 'inactive'])],
-            'variants.*.attribute_values' => ['required', 'array', 'min:1'],
-            'variants.*.attribute_values.*.attribute_id' => ['required', 'integer', 'exists:attributes,id'],
-            'variants.*.attribute_values.*.attribute_value_id' => ['required', 'integer', 'exists:attribute_values,id'],
+            'variants.*.attribute_values' => ['nullable', 'array'],
+            'variants.*.attribute_values.*.attribute_id' => ['required_with:variants.*.attribute_values.*', 'integer', 'exists:attributes,id'],
+            'variants.*.attribute_values.*.attribute_value_id' => ['required_with:variants.*.attribute_values.*', 'integer', 'exists:attribute_values,id'],
 
             // Inventory (optional, only for new variants)
             'variants.*.inventory' => ['nullable', 'array'],

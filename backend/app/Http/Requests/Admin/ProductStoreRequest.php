@@ -133,19 +133,9 @@ class ProductStoreRequest extends ApiFormRequest
             'variants.*.height_mm' => ['nullable', 'integer', 'min:0'],
             'variants.*.status' => ['nullable', 'string', Rule::in(['active', 'inactive'])],
             'variants.*.attribute_values' => [
-                'sometimes',
+                'nullable',
                 'array',
-                function ($attribute, $value, $fail) {
-                    $productType = request()->input('product_type');
-
-                    // For variant products, attribute_values must have at least 1 item
-                    if ($productType === 'variant') {
-                        if (!is_array($value) || empty($value) || count($value) < 1) {
-                            $fail('The attribute values field must have at least 1 item for variant products.');
-                        }
-                    }
-                    // For simple products, empty array is allowed (no validation needed)
-                },
+                // Attribute values are optional - variants can exist without attributes
             ],
             'variants.*.attribute_values.*.attribute_id' => ['required_with:variants.*.attribute_values.*', 'integer', 'exists:attributes,id'],
             'variants.*.attribute_values.*.attribute_value_id' => ['required_with:variants.*.attribute_values.*', 'integer', 'exists:attribute_values,id'],

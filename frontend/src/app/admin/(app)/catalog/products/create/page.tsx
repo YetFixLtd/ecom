@@ -319,20 +319,14 @@ export default function CreateProductPage() {
           if (!variant.price || variant.price <= 0) {
             return false;
           }
-          // Must have at least one attribute value
-          if (
-            !variant.attribute_values ||
-            variant.attribute_values.length === 0
-          ) {
-            return false;
-          }
+          // Attribute values are optional - no validation needed
           return true;
         });
 
         // Check if any variants were filtered out
         if (validVariants.length === 0) {
           setServerError(
-            "All variants must have SKU, price, and at least one attribute value."
+            "All variants must have SKU and price."
           );
           setIsSubmitting(false);
           return;
