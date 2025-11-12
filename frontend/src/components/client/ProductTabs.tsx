@@ -38,7 +38,8 @@ export default function ProductTabs() {
         {/* Product Grid */}
         {loading ? (
           <div className="text-center py-12">
-            <p className="text-gray-500">Loading products...</p>
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            <p className="text-gray-500 mt-4">Loading products...</p>
           </div>
         ) : products.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -55,4 +56,3 @@ export default function ProductTabs() {
     </section>
   );
 }
-

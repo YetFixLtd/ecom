@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
         // After this, only super_admin can create other administrators.
         $this->call([
             AdministratorSeeder::class,
+            ProductSeeder::class,
         ]);
 
         // User::factory(10)->create();

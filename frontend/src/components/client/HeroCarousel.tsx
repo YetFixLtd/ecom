@@ -54,7 +54,7 @@ export default function HeroCarousel({ products }: HeroCarouselProps) {
     <div className="relative bg-white overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="lg:ml-80">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center relative">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center relative pl-4">
             {/* Left Side - Text Content with fade transition */}
             <div
               className={`space-y-8 transition-opacity duration-500 ${
@@ -64,15 +64,15 @@ export default function HeroCarousel({ products }: HeroCarouselProps) {
             >
               <div>
                 {currentProduct.brand && (
-                  <p className="text-sm md:text-base text-gray-500 font-medium mb-2 uppercase tracking-wide">
+                  <p className="text-sm md:text-base text-gray-500 font-medium  uppercase tracking-wide">
                     {currentProduct.brand.name}
                   </p>
                 )}
-                <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-black mb-3 tracking-tight leading-tight">
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-black tracking-tight leading-tight">
                   {currentProduct.name}
                 </h1>
                 {currentProduct.short_description && (
-                  <p className="text-base md:text-lg text-gray-700 font-medium mb-4 line-clamp-2">
+                  <p className="text-base md:text-lg text-gray-700 font-medium line-clamp-2">
                     {currentProduct.short_description}
                   </p>
                 )}

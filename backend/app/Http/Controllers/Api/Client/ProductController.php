@@ -100,7 +100,8 @@ class ProductController extends Controller
 
         // Pagination
         $perPage = min($request->get('per_page', 15), 100);
-        $products = $query->paginate($perPage);
+        $page = max($request->get('page', 1), 1); // Ensure page is at least 1
+        $products = $query->paginate($perPage, ['*'], 'page', $page);
 
         return response()->json([
             'data' => ProductResource::collection($products->items()),

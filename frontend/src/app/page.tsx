@@ -4,6 +4,7 @@ import TopNavigation from "@/components/client/TopNavigation";
 import HeroCarousel from "@/components/client/HeroCarousel";
 import PromotionalDeals from "@/components/client/PromotionalDeals";
 import ProductTabs from "@/components/client/ProductTabs";
+import LazyLoadProducts from "@/components/client/LazyLoadProducts";
 import NewsletterSignup from "@/components/client/NewsletterSignup";
 import { getProducts } from "@/lib/apis/client/products";
 import type { ClientProduct } from "@/types/client";
@@ -39,6 +40,7 @@ export default async function Home() {
       {/* Full Width Sections */}
       <PromotionalDeals />
       <ProductTabs />
+      <LazyLoadProducts />
       <NewsletterSignup />
 
       <Footer />
