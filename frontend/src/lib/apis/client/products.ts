@@ -62,3 +62,25 @@ export async function getProductVariants(
   return response.data;
 }
 
+/**
+ * Check variant availability (stock)
+ * Public endpoint - no authentication required
+ */
+export async function checkVariantAvailability(
+  variantId: number,
+  quantity: number = 1
+): Promise<{
+  available: boolean;
+  stockout?: boolean;
+  message: string;
+  available_quantity?: number;
+  requested_quantity?: number;
+  allow_backorder?: boolean;
+  track_stock?: boolean;
+}> {
+  const response = await api.get(`/variants/${variantId}/availability`, {
+    params: { quantity },
+  });
+  return response.data;
+}
+

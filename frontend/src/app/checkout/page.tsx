@@ -17,11 +17,13 @@ export default function CheckoutPage() {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
-  
+
   // Address selection (for authenticated users)
   const [billingAddressId, setBillingAddressId] = useState<number | null>(null);
-  const [shippingAddressId, setShippingAddressId] = useState<number | null>(null);
-  
+  const [shippingAddressId, setShippingAddressId] = useState<number | null>(
+    null
+  );
+
   // Direct address entry (for guests)
   const [billingAddress, setBillingAddress] = useState<CreateAddressRequest>({
     name: "",
@@ -48,8 +50,11 @@ export default function CheckoutPage() {
   const [useSameAddress, setUseSameAddress] = useState(true);
   const [guestEmail, setGuestEmail] = useState("");
   const [guestName, setGuestName] = useState("");
-  
+
   const [shippingMethodId, setShippingMethodId] = useState<number | null>(null);
+  const [selectedShipping, setSelectedShipping] = useState<
+    "inside" | "outside" | null
+  >(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showNewAddress, setShowNewAddress] = useState(false);
@@ -62,7 +67,19 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     loadData();
+    // Load saved shipping selection from localStorage
+    const savedShipping = localStorage.getItem("selectedShipping");
+    if (savedShipping === "inside" || savedShipping === "outside") {
+      setSelectedShipping(savedShipping);
+    }
   }, []);
+
+  // Save shipping selection to localStorage whenever it changes
+  useEffect(() => {
+    if (selectedShipping) {
+      localStorage.setItem("selectedShipping", selectedShipping);
+    }
+  }, [selectedShipping]);
 
   useEffect(() => {
     if (useSameAddress && isGuest) {
@@ -72,25 +89,26 @@ export default function CheckoutPage() {
 
   async function loadData() {
     const token = await getUserTokenFromCookies();
-    
+
     if (!token) {
       // Guest checkout - try to load cart from localStorage
       setIsGuest(true);
       setIsAuthenticated(false);
-      
+
       try {
-        const guestCartStr = localStorage.getItem('guest_cart');
+        const guestCartStr = localStorage.getItem("guest_cart");
         if (guestCartStr) {
           const guestCart = JSON.parse(guestCartStr);
           // Convert localStorage cart to Cart format
           const items = guestCart.items || [];
-          const subtotal = items.reduce((sum: number, item: any) => 
-            sum + (item.unit_price * item.quantity), 0
+          const subtotal = items.reduce(
+            (sum: number, item: any) => sum + item.unit_price * item.quantity,
+            0
           );
           setCart({
             id: 0,
-            currency: guestCart.currency || 'BDT',
-            status: 'open',
+            currency: guestCart.currency || "BDT",
+            status: "open",
             items: items.map((item: any) => ({
               id: item.id || 0,
               variant_id: item.variant_id,
@@ -108,7 +126,7 @@ export default function CheckoutPage() {
       } catch (error) {
         console.error("Error loading guest cart:", error);
       }
-      
+
       setLoading(false);
       return;
     }
@@ -167,7 +185,11 @@ export default function CheckoutPage() {
       return false;
     }
     if (!useSameAddress) {
-      if (!shippingAddress.name || !shippingAddress.line1 || !shippingAddress.city) {
+      if (
+        !shippingAddress.name ||
+        !shippingAddress.line1 ||
+        !shippingAddress.city
+      ) {
         alert("Please fill in all required shipping address fields");
         return false;
       }
@@ -181,6 +203,12 @@ export default function CheckoutPage() {
 
   async function handleSubmitOrder() {
     const token = await getUserTokenFromCookies();
+
+    // Validate shipping selection
+    if (!selectedShipping) {
+      alert("Please select a shipping option");
+      return;
+    }
 
     if (isGuest) {
       // Guest checkout
@@ -202,20 +230,30 @@ export default function CheckoutPage() {
           unit_price: item.unit_price,
         }));
 
+        // Determine shipping cost based on selection
+        const shippingCost =
+          selectedShipping === "inside"
+            ? 60
+            : selectedShipping === "outside"
+            ? 110
+            : 0;
+
         const orderData = {
           billing_address: billingAddress,
           shipping_address: useSameAddress ? billingAddress : shippingAddress,
           shipping_method_id: shippingMethodId || undefined,
+          shipping_cost: shippingCost,
+          shipping_option: selectedShipping,
           guest_email: guestEmail,
           guest_name: guestName,
           cart_items: cartItems,
-          currency: cart.currency || 'BDT',
+          currency: cart.currency || "BDT",
         };
         const response = await createOrder(orderData);
-        
+
         // Clear guest cart after successful order
-        localStorage.removeItem('guest_cart');
-        
+        localStorage.removeItem("guest_cart");
+
         router.push(`/orders/${response.data.id}`);
       } catch (error: any) {
         alert(error.response?.data?.message || "Failed to create order");
@@ -233,11 +271,21 @@ export default function CheckoutPage() {
 
       setSubmitting(true);
       try {
+        // Determine shipping cost based on selection
+        const shippingCost =
+          selectedShipping === "inside"
+            ? 60
+            : selectedShipping === "outside"
+            ? 110
+            : 0;
+
         const response = await createOrder(
           {
             billing_address_id: billingAddressId,
             shipping_address_id: shippingAddressId,
             shipping_method_id: shippingMethodId || undefined,
+            shipping_cost: shippingCost,
+            shipping_option: selectedShipping,
           },
           token
         );
@@ -571,7 +619,8 @@ export default function CheckoutPage() {
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-zinc-700 mb-1">
-                            Address Line 1 <span className="text-red-500">*</span>
+                            Address Line 1{" "}
+                            <span className="text-red-500">*</span>
                           </label>
                           <input
                             type="text"
@@ -656,7 +705,8 @@ export default function CheckoutPage() {
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-zinc-700 mb-1">
-                              Country Code <span className="text-red-500">*</span>
+                              Country Code{" "}
+                              <span className="text-red-500">*</span>
                             </label>
                             <input
                               type="text"
@@ -854,18 +904,107 @@ export default function CheckoutPage() {
                     <span>{cart.items_count}</span>
                   </div>
                 </div>
+
+                {/* Shipping Options */}
+                <div className="border-t border-zinc-200 pt-4 mb-4">
+                  <h3 className="text-sm font-semibold text-zinc-900 mb-3">
+                    Shipping
+                  </h3>
+                  <div className="space-y-3">
+                    <label
+                      className={`flex items-center justify-between p-3 border rounded-md cursor-pointer transition-colors ${
+                        selectedShipping === "inside"
+                          ? "border-zinc-900 bg-zinc-50"
+                          : "border-zinc-300 hover:bg-zinc-50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="radio"
+                          name="shipping"
+                          value="inside"
+                          checked={selectedShipping === "inside"}
+                          onChange={(e) => setSelectedShipping("inside")}
+                          className="w-4 h-4 text-zinc-900"
+                        />
+                        <span className="text-sm text-zinc-700">
+                          ঢাকার ভেতরে:
+                        </span>
+                      </div>
+                      <span className="text-sm font-medium text-zinc-900">
+                        ৳ 60
+                      </span>
+                    </label>
+                    <label
+                      className={`flex items-center justify-between p-3 border rounded-md cursor-pointer transition-colors ${
+                        selectedShipping === "outside"
+                          ? "border-zinc-900 bg-zinc-50"
+                          : "border-zinc-300 hover:bg-zinc-50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="radio"
+                          name="shipping"
+                          value="outside"
+                          checked={selectedShipping === "outside"}
+                          onChange={(e) => setSelectedShipping("outside")}
+                          className="w-4 h-4 text-zinc-900"
+                        />
+                        <span className="text-sm text-zinc-700">
+                          ঢাকার বাহিরে:
+                        </span>
+                      </div>
+                      <span className="text-sm font-medium text-zinc-900">
+                        ৳ 110
+                      </span>
+                    </label>
+                  </div>
+                  {selectedShipping && (
+                    <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded-md">
+                      <p className="text-xs text-blue-800">
+                        <span className="font-semibold">Selected:</span>{" "}
+                        {selectedShipping === "inside"
+                          ? "ঢাকার ভেতরে (৳ 60)"
+                          : "ঢাকার বাহিরে (৳ 110)"}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
                 <div className="border-t border-zinc-200 pt-4 mb-4">
                   <div className="flex justify-between text-lg font-bold text-zinc-900">
                     <span>Total</span>
-                    <span>৳{cart.subtotal.toFixed(2)}</span>
+                    <span>
+                      ৳
+                      {(
+                        cart.subtotal +
+                        (selectedShipping === "inside"
+                          ? 60
+                          : selectedShipping === "outside"
+                          ? 110
+                          : 0)
+                      ).toFixed(2)}
+                    </span>
                   </div>
+                  {selectedShipping && (
+                    <div className="text-xs text-zinc-500 mt-1">
+                      Subtotal: ৳{cart.subtotal.toFixed(2)} + Shipping: ৳
+                      {selectedShipping === "inside" ? "60" : "110"}
+                    </div>
+                  )}
                 </div>
                 <button
                   onClick={handleSubmitOrder}
                   disabled={
                     submitting ||
+                    !selectedShipping ||
                     (isGuest
-                      ? !guestEmail || !guestName || !billingAddress.name || !billingAddress.line1 || !billingAddress.city
+                      ? !guestEmail ||
+                        !guestName ||
+                        !billingAddress.name ||
+                        !billingAddress.line1 ||
+                        !billingAddress.city
                       : !billingAddressId || !shippingAddressId)
                   }
                   className="w-full bg-zinc-900 text-white px-6 py-3 rounded-md hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

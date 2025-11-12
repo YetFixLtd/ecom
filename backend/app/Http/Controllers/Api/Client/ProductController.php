@@ -5,8 +5,11 @@ namespace App\Http\Controllers\Api\Client;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Client\ProductResource;
 use App\Models\Catalog\Product;
+use App\Models\Attribute\ProductVariant;
+use App\Models\Inventory\InventoryItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Product Controller
@@ -194,5 +197,71 @@ class ProductController extends Controller
                 ];
             }),
         ]);
+    }
+
+    /**
+     * Check variant availability (stock).
+     * Public endpoint for checking inventory before adding to cart.
+     *
+     * @param Request $request
+     * @param int $variantId
+     * @return JsonResponse
+     */
+    public function checkVariantAvailability(Request $request, int $variantId): JsonResponse
+    {
+        $quantity = $request->get('quantity', 1);
+
+        $variant = ProductVariant::where('status', 'active')->findOrFail($variantId);
+
+        // Check if variant is active
+        if ($variant->status !== 'active') {
+            return response()->json([
+                'available' => false,
+                'message' => 'This variant is not available.',
+            ], 200);
+        }
+
+        // Check inventory if stock is tracked
+        if ($variant->track_stock) {
+            $totalAvailable = InventoryItem::where('variant_id', $variant->id)
+                ->sum(DB::raw('on_hand - reserved'));
+
+            // Check if completely out of stock
+            if ($totalAvailable <= 0 && !$variant->allow_backorder) {
+                return response()->json([
+                    'available' => false,
+                    'stockout' => true,
+                    'message' => 'Stockout - This item is currently out of stock.',
+                    'available_quantity' => 0,
+                    'requested_quantity' => $quantity,
+                ], 200);
+            }
+
+            if ($totalAvailable < $quantity && !$variant->allow_backorder) {
+                return response()->json([
+                    'available' => false,
+                    'stockout' => false,
+                    'message' => 'Insufficient stock available.',
+                    'available_quantity' => max(0, $totalAvailable),
+                    'requested_quantity' => $quantity,
+                ], 200);
+            }
+
+            return response()->json([
+                'available' => true,
+                'stockout' => false,
+                'message' => 'Variant is available.',
+                'available_quantity' => $totalAvailable,
+                'requested_quantity' => $quantity,
+                'allow_backorder' => $variant->allow_backorder,
+            ], 200);
+        }
+
+        // If stock is not tracked, always available
+        return response()->json([
+            'available' => true,
+            'message' => 'Variant is available.',
+            'track_stock' => false,
+        ], 200);
     }
 }

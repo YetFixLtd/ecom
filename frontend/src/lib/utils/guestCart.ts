@@ -61,6 +61,8 @@ export function saveGuestCart(cart: GuestCart): void {
 
 /**
  * Add item to guest cart
+ * Note: This function does NOT validate inventory.
+ * Inventory validation should be done before calling this function.
  */
 export function addToGuestCart(
   variantId: number,

@@ -134,7 +134,7 @@ class OrderController extends Controller
                     $unitPrice = $item['unit_price'];
                     $lineTotal = $quantity * $unitPrice;
                     $subtotal += $lineTotal;
-                    
+
                     $cartItems[] = [
                         'variant' => $variant,
                         'qty' => $quantity,
@@ -185,8 +185,13 @@ class OrderController extends Controller
             // Get shipping method if provided
             $shippingMethod = null;
             $shippingTotal = 0;
+            $shippingOption = null;
 
-            if ($request->shipping_method_id) {
+            // Use provided shipping_cost if available, otherwise calculate from shipping_method_id
+            if ($request->has('shipping_cost') && $request->shipping_cost !== null) {
+                $shippingTotal = (float) $request->shipping_cost;
+                $shippingOption = $request->shipping_option ?? null; // 'inside' or 'outside'
+            } elseif ($request->shipping_method_id) {
                 $shippingMethod = ShippingMethod::where('is_active', true)
                     ->findOrFail($request->shipping_method_id);
 
@@ -221,6 +226,7 @@ class OrderController extends Controller
                 'billing_address_id' => $billingAddress->id,
                 'shipping_address_id' => $shippingAddress->id,
                 'shipping_method_id' => $shippingMethod?->id,
+                'shipping_option' => $shippingOption,
                 'placed_at' => now(),
             ]);
 

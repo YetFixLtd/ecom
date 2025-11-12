@@ -29,10 +29,25 @@ export default function CartPage() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<number | string | null>(null);
   const [isGuest, setIsGuest] = useState(false);
+  const [selectedShipping, setSelectedShipping] = useState<
+    "inside" | "outside" | null
+  >(null);
 
   useEffect(() => {
     loadCart();
+    // Load saved shipping selection from localStorage
+    const savedShipping = localStorage.getItem("selectedShipping");
+    if (savedShipping === "inside" || savedShipping === "outside") {
+      setSelectedShipping(savedShipping);
+    }
   }, []);
+
+  // Save shipping selection to localStorage whenever it changes
+  useEffect(() => {
+    if (selectedShipping) {
+      localStorage.setItem("selectedShipping", selectedShipping);
+    }
+  }, [selectedShipping]);
 
   function notifyCartUpdate() {
     // Dispatch event to update header cart count
@@ -77,7 +92,7 @@ export default function CartPage() {
     if (newQuantity < 1) return;
 
     const token = await getUserTokenFromCookies();
-    
+
     setUpdating(item.id);
     try {
       if (token && !isGuest) {
@@ -194,7 +209,12 @@ export default function CartPage() {
             <div className="lg:col-span-2">
               <div className="bg-white rounded-lg shadow-sm border border-zinc-200 divide-y divide-zinc-200">
                 {cart.items.map((item, index) => (
-                  <div key={isGuest ? `guest_${index}_${item.variant_id}` : item.id} className="p-6 flex gap-4">
+                  <div
+                    key={
+                      isGuest ? `guest_${index}_${item.variant_id}` : item.id
+                    }
+                    className="p-6 flex gap-4"
+                  >
                     {item.variant?.product?.primary_image && (
                       <div className="relative w-24 h-24 bg-zinc-100 rounded-lg overflow-hidden shrink-0">
                         <Image
@@ -252,7 +272,13 @@ export default function CartPage() {
                           </p>
                         </div>
                         <button
-                          onClick={() => handleRemoveItem(isGuest ? (item as any).guestItemId || item.id : item.id)}
+                          onClick={() =>
+                            handleRemoveItem(
+                              isGuest
+                                ? (item as any).guestItemId || item.id
+                                : item.id
+                            )
+                          }
                           className="text-red-600 hover:text-red-700 ml-4"
                         >
                           Remove
@@ -279,11 +305,73 @@ export default function CartPage() {
                     <span>{cart.items_count}</span>
                   </div>
                 </div>
+
+                {/* Shipping Options */}
+                <div className="border-t border-zinc-200 pt-4 mb-4">
+                  <h3 className="text-sm font-semibold text-zinc-900 mb-3">
+                    Shipping
+                  </h3>
+                  <div className="space-y-3">
+                    <label className="flex items-center justify-between p-3 border border-zinc-300 rounded-md cursor-pointer hover:bg-zinc-50 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="radio"
+                          name="shipping"
+                          value="inside"
+                          checked={selectedShipping === "inside"}
+                          onChange={(e) => setSelectedShipping("inside")}
+                          className="w-4 h-4 text-zinc-900"
+                        />
+                        <span className="text-sm text-zinc-700">
+                          ঢাকার ভেতরে:
+                        </span>
+                      </div>
+                      <span className="text-sm font-medium text-zinc-900">
+                        ৳ 60
+                      </span>
+                    </label>
+                    <label className="flex items-center justify-between p-3 border border-zinc-300 rounded-md cursor-pointer hover:bg-zinc-50 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="radio"
+                          name="shipping"
+                          value="outside"
+                          checked={selectedShipping === "outside"}
+                          onChange={(e) => setSelectedShipping("outside")}
+                          className="w-4 h-4 text-zinc-900"
+                        />
+                        <span className="text-sm text-zinc-700">
+                          ঢাকার বাহিরে:
+                        </span>
+                      </div>
+                      <span className="text-sm font-medium text-zinc-900">
+                        ৳ 110
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
                 <div className="border-t border-zinc-200 pt-4 mb-4">
                   <div className="flex justify-between text-lg font-bold text-zinc-900">
                     <span>Total</span>
-                    <span>৳{cart.subtotal.toFixed(2)}</span>
+                    <span>
+                      ৳
+                      {(
+                        cart.subtotal +
+                        (selectedShipping === "inside"
+                          ? 60
+                          : selectedShipping === "outside"
+                          ? 110
+                          : 0)
+                      ).toFixed(2)}
+                    </span>
                   </div>
+                  {selectedShipping && (
+                    <div className="text-xs text-zinc-500 mt-1">
+                      Subtotal: ৳{cart.subtotal.toFixed(2)} + Shipping: ৳
+                      {selectedShipping === "inside" ? "60" : "110"}
+                    </div>
+                  )}
                 </div>
                 <Link
                   href="/checkout"

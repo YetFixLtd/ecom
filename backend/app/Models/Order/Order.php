@@ -43,6 +43,7 @@ class Order extends Model
         'billing_address_id',
         'shipping_address_id',
         'shipping_method_id',
+        'shipping_option',
         'placed_at',
     ];
 

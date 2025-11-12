@@ -61,6 +61,7 @@ Route::prefix('v1')->group(function () {
     Route::get('/products', [ClientProductController::class, 'index'])->name('api.products.index');
     Route::get('/products/{id}', [ClientProductController::class, 'show'])->name('api.products.show');
     Route::get('/products/{id}/variants', [ClientProductController::class, 'variants'])->name('api.products.variants');
+    Route::get('/variants/{variantId}/availability', [ClientProductController::class, 'checkVariantAvailability'])->name('api.variants.availability');
 
     // Categories
     Route::get('/categories', [ClientCategoryController::class, 'index'])->name('api.categories.index');

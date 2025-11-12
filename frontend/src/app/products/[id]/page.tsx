@@ -6,7 +6,7 @@ import Image from "next/image";
 import { getImageUrl } from "@/lib/utils/images";
 import Header from "@/components/client/Header";
 import Footer from "@/components/client/Footer";
-import { getProduct, getProductVariants } from "@/lib/apis/client/products";
+import { getProduct, getProductVariants, checkVariantAvailability } from "@/lib/apis/client/products";
 import { addToCart } from "@/lib/apis/client/cart";
 import { getUserTokenFromCookies } from "@/lib/cookies";
 import type { ClientProduct, ProductVariant } from "@/types/client";
@@ -23,7 +23,11 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [addingToCart, setAddingToCart] = useState(false);
+  const [buyingNow, setBuyingNow] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [isStockout, setIsStockout] = useState(false);
+  const [availableQuantity, setAvailableQuantity] = useState<number | null>(null);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
 
   useEffect(() => {
     loadProduct();
@@ -50,14 +54,49 @@ export default function ProductDetailPage() {
       setVariants(response.data);
       if (response.data.length > 0) {
         setSelectedVariant(response.data[0]);
+        // Check availability for the first variant
+        checkAvailability(response.data[0], 1);
       }
     } catch (error) {
       console.error("Error loading variants:", error);
     }
   }
 
+  async function checkAvailability(variant: ProductVariant, qty: number) {
+    if (!variant) return;
+    
+    setCheckingAvailability(true);
+    try {
+      const availability = await checkVariantAvailability(variant.id, qty);
+      setIsStockout(!availability.available && availability.stockout === true);
+      setAvailableQuantity(availability.available_quantity ?? null);
+    } catch (error) {
+      console.error("Error checking availability:", error);
+      // Don't set stockout if check fails
+    } finally {
+      setCheckingAvailability(false);
+    }
+  }
+
   async function handleAddToCart() {
     if (!selectedVariant) return;
+
+    // Check availability first
+    try {
+      const availability = await checkVariantAvailability(selectedVariant.id, quantity);
+      if (!availability.available) {
+        if (availability.stockout) {
+          alert("Stockout - This item is currently out of stock.");
+          setIsStockout(true);
+        } else {
+          alert("Insufficient stock available.");
+        }
+        return;
+      }
+    } catch (error) {
+      console.error("Error checking availability:", error);
+      // Continue with adding to cart if check fails
+    }
 
     const token = await getUserTokenFromCookies();
     
@@ -94,9 +133,78 @@ export default function ProductDetailPage() {
         router.push("/cart");
       }
     } catch (error: any) {
-      alert(error.response?.data?.message || "Failed to add to cart");
+      const errorMessage = error.response?.data?.message || "Failed to add to cart";
+      // Check if it's a stockout error
+      if (errorMessage.toLowerCase().includes("stock") || errorMessage.toLowerCase().includes("insufficient") || errorMessage.toLowerCase().includes("not available")) {
+        setIsStockout(true);
+      }
+      alert(errorMessage);
     } finally {
       setAddingToCart(false);
+    }
+  }
+
+  async function handleBuyNow() {
+    if (!selectedVariant) return;
+
+    // Check availability first
+    try {
+      const availability = await checkVariantAvailability(selectedVariant.id, quantity);
+      if (!availability.available) {
+        if (availability.stockout) {
+          alert("Stockout - This item is currently out of stock.");
+          setIsStockout(true);
+        } else {
+          alert("Insufficient stock available.");
+        }
+        return;
+      }
+    } catch (error) {
+      console.error("Error checking availability:", error);
+      // Continue with adding to cart if check fails
+    }
+
+    const token = await getUserTokenFromCookies();
+    
+    setBuyingNow(true);
+    try {
+      if (token) {
+        // Authenticated user - use API
+        await addToCart(token, {
+          variant_id: selectedVariant.id,
+          quantity,
+        });
+        router.push("/cart");
+      } else {
+        // Guest user - use localStorage
+        const { addToGuestCart } = await import("@/lib/utils/guestCart");
+        addToGuestCart(
+          selectedVariant.id,
+          quantity,
+          selectedVariant.price,
+          {
+            id: selectedVariant.id,
+            sku: selectedVariant.sku,
+            price: selectedVariant.price,
+            product: {
+              id: product.id,
+              name: product.name,
+              slug: product.slug,
+              primary_image: product.primary_image,
+            },
+          }
+        );
+        router.push("/cart");
+      }
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || "Failed to add to cart";
+      // Check if it's a stockout error
+      if (errorMessage.toLowerCase().includes("stock") || errorMessage.toLowerCase().includes("insufficient") || errorMessage.toLowerCase().includes("not available")) {
+        setIsStockout(true);
+      }
+      alert(errorMessage);
+    } finally {
+      setBuyingNow(false);
     }
   }
 
@@ -235,6 +343,9 @@ export default function ProductDetailPage() {
                         (v) => v.id === parseInt(e.target.value)
                       );
                       setSelectedVariant(variant || null);
+                      if (variant) {
+                        checkAvailability(variant, quantity);
+                      }
                     }}
                     className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-500"
                   >
@@ -252,47 +363,55 @@ export default function ProductDetailPage() {
                 </div>
               )}
 
-              {/* Quantity and Add to Cart */}
-              <div className="flex items-center gap-4 mb-6">
-                <label className="text-sm font-medium text-zinc-700">
-                  Quantity:
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={quantity}
-                  onChange={(e) =>
-                    setQuantity(Math.max(1, parseInt(e.target.value) || 1))
-                  }
-                  className="w-20 px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-500"
-                />
-                <button
-                  onClick={handleAddToCart}
-                  disabled={addingToCart || !selectedVariant}
-                  className="flex-1 bg-zinc-900 text-white px-6 py-3 rounded-md hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {addingToCart ? "Adding..." : "Add to Cart"}
-                </button>
+              {/* Stockout Message */}
+              {isStockout && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                  <p className="text-red-800 font-semibold text-sm">
+                    Stockout - This item is currently out of stock.
+                  </p>
+                </div>
+              )}
+
+
+              {/* Quantity and Action Buttons */}
+              <div className="mb-6">
+                <div className="flex items-center gap-4 mb-4">
+                  <label className="text-sm font-medium text-zinc-700">
+                    Quantity:
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max={availableQuantity !== null ? availableQuantity : undefined}
+                    value={quantity}
+                    onChange={(e) => {
+                      const newQty = Math.max(1, parseInt(e.target.value) || 1);
+                      setQuantity(newQty);
+                      if (selectedVariant) {
+                        checkAvailability(selectedVariant, newQty);
+                      }
+                    }}
+                    className="w-20 px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-500"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={addingToCart || buyingNow || !selectedVariant || isStockout || checkingAvailability}
+                    className="flex-1 bg-zinc-900 text-white px-6 py-3 rounded-md hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {addingToCart ? "Adding..." : checkingAvailability ? "Checking..." : isStockout ? "Out of Stock" : "Add to Cart"}
+                  </button>
+                  <button
+                    onClick={handleBuyNow}
+                    disabled={addingToCart || buyingNow || !selectedVariant || isStockout || checkingAvailability}
+                    className="flex-1 bg-red-600 text-white px-6 py-3 rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                  >
+                    {buyingNow ? "Processing..." : checkingAvailability ? "Checking..." : isStockout ? "Out of Stock" : "Buy Now"}
+                  </button>
+                </div>
               </div>
 
-              {/* Inventory Info */}
-              {selectedVariant?.inventory &&
-                selectedVariant.inventory.length > 0 && (
-                  <div className="mb-6">
-                    <h3 className="font-semibold text-zinc-900 mb-2">
-                      Availability
-                    </h3>
-                    <div className="space-y-2">
-                      {selectedVariant.inventory.map((inv, index) => (
-                        <div key={index} className="text-sm text-zinc-700">
-                          {inv.warehouse_name ||
-                            `Warehouse ${inv.warehouse_id}`}
-                          : {inv.available} available
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
             </div>
           </div>
 
