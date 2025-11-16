@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\Admin\AdminAuthController;
 use App\Http\Controllers\Api\Admin\AdminManagementController;
 use App\Http\Controllers\Api\Admin\BrandController;
+use App\Http\Controllers\Api\Admin\ShippingMethodController;
 use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\Admin\ProductController;
 use App\Http\Controllers\Api\Admin\AttributeController;
@@ -99,6 +100,7 @@ Route::prefix('v1')->group(function () {
     });
 
     // Guest checkout and order viewing - accessible without authentication
+    Route::get('/shipping-methods', [OrderController::class, 'shippingMethods'])->name('api.shipping-methods.index');
     Route::post('/orders', [OrderController::class, 'store'])->name('api.orders.store');
     Route::get('/orders/{id}', [OrderController::class, 'show'])->name('api.orders.show');
 
@@ -153,6 +155,15 @@ Route::prefix('v1')->group(function () {
                 'show' => 'api.admin.categories.show',
                 'update' => 'api.admin.categories.update',
                 'destroy' => 'api.admin.categories.destroy',
+            ]);
+
+            // Shipping Methods
+            Route::apiResource('shipping-methods', ShippingMethodController::class)->names([
+                'index' => 'api.admin.shipping-methods.index',
+                'store' => 'api.admin.shipping-methods.store',
+                'show' => 'api.admin.shipping-methods.show',
+                'update' => 'api.admin.shipping-methods.update',
+                'destroy' => 'api.admin.shipping-methods.destroy',
             ]);
 
             // Attributes

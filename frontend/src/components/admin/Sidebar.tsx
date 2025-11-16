@@ -18,6 +18,7 @@ import {
   ArrowLeftRight,
   TrendingUp,
   Activity,
+  Truck,
 } from "lucide-react";
 
 const navItems = [
@@ -87,6 +88,12 @@ const navItems = [
         Icon: Activity,
       },
     ],
+  },
+  {
+    href: "/admin/shipping-methods",
+    label: "Shipping Methods",
+    Icon: Truck,
+    disabled: false,
   },
   {
     href: "/admin/manage",

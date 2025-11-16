@@ -14,6 +14,8 @@ use App\Models\Attribute\ProductVariant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use Laravel\Sanctum\PersonalAccessToken;
 
 /**
  * Order Controller
@@ -22,6 +24,34 @@ use Illuminate\Support\Facades\DB;
  */
 class OrderController extends Controller
 {
+    /**
+     * Get available shipping methods.
+     * Public endpoint - no authentication required
+     *
+     * @return JsonResponse
+     */
+    public function shippingMethods(): JsonResponse
+    {
+        $methods = ShippingMethod::where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        return response()->json([
+            'data' => $methods->map(function ($method) {
+                return [
+                    'id' => $method->id,
+                    'name' => $method->name,
+                    'code' => $method->code,
+                    'description' => $method->description,
+                    'base_rate' => (float) $method->base_rate,
+                    'estimated_days' => $method->estimated_days,
+                    'config' => $method->config,
+                ];
+            }),
+        ]);
+    }
+
     /**
      * List user's orders.
      *
@@ -66,7 +96,27 @@ class OrderController extends Controller
      */
     public function show(Request $request, int $id): JsonResponse
     {
-        $user = $request->user();
+        // Try to authenticate user from token (even if route is outside middleware)
+        $user = null;
+
+        // Check if token is present and try to authenticate manually
+        $token = $request->bearerToken();
+        if ($token) {
+            try {
+                // Find the token and get the user
+                $accessToken = PersonalAccessToken::findToken($token);
+                if ($accessToken) {
+                    $user = $accessToken->tokenable;
+                }
+            } catch (\Exception $e) {
+                // Token invalid or expired, treat as guest
+            }
+        }
+
+        // If still no user, try request->user() as fallback (in case middleware processed it)
+        if (!$user) {
+            $user = $request->user();
+        }
 
         $query = Order::with(['billingAddress', 'shippingAddress', 'shippingMethod', 'items']);
 
@@ -93,7 +143,28 @@ class OrderController extends Controller
     public function store(CreateOrderRequest $request): JsonResponse
     {
         return DB::transaction(function () use ($request) {
-            $user = $request->user();
+            // Try to authenticate user from token (even if route is outside middleware)
+            $user = null;
+
+            // Check if token is present and try to authenticate manually
+            $token = $request->bearerToken();
+            if ($token) {
+                try {
+                    // Find the token and get the user
+                    $accessToken = PersonalAccessToken::findToken($token);
+                    if ($accessToken) {
+                        $user = $accessToken->tokenable;
+                    }
+                } catch (\Exception $e) {
+                    // Token invalid or expired, treat as guest
+                }
+            }
+
+            // If still no user, try request->user() as fallback (in case middleware processed it)
+            if (!$user) {
+                $user = $request->user();
+            }
+
             $isGuest = !$user;
 
             if ($isGuest) {

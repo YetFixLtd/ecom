@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Client;
 
 use App\Http\Requests\ApiFormRequest;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class CreateOrderRequest extends ApiFormRequest
 {
@@ -15,12 +16,39 @@ class CreateOrderRequest extends ApiFormRequest
     }
 
     /**
+     * Prepare the data for validation.
+     * Manually authenticate user from token if route is outside middleware.
+     */
+    protected function prepareForValidation(): void
+    {
+        // Try to get user from request (works if middleware processed it)
+        $user = $this->user();
+
+        // If no user from request, try to authenticate manually from token
+        if (!$user && $this->bearerToken()) {
+            try {
+                $accessToken = PersonalAccessToken::findToken($this->bearerToken());
+                if ($accessToken) {
+                    $user = $accessToken->tokenable;
+                    // Set the user on the request so $this->user() works in rules()
+                    $this->setUserResolver(function () use ($user) {
+                        return $user;
+                    });
+                }
+            } catch (\Exception $e) {
+                // Token invalid or expired, treat as guest
+            }
+        }
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
+        // User should already be set in prepareForValidation()
         $user = $this->user();
 
         // If user is authenticated, require address IDs
@@ -78,6 +106,7 @@ class CreateOrderRequest extends ApiFormRequest
      */
     public function messages(): array
     {
+        // User should already be set in prepareForValidation()
         $user = $this->user();
 
         if ($user) {

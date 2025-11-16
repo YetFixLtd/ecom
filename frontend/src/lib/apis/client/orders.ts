@@ -55,6 +55,25 @@ export async function getOrder(
 }
 
 /**
+ * Get available shipping methods
+ * Public endpoint - no authentication required
+ */
+export async function getShippingMethods(): Promise<{
+  data: Array<{
+    id: number;
+    name: string;
+    code: string;
+    description: string | null;
+    base_rate: number;
+    estimated_days: number | null;
+    config: Record<string, any> | null;
+  }>;
+}> {
+  const response = await api.get("/shipping-methods");
+  return response.data;
+}
+
+/**
  * Create an order from the user's cart (checkout)
  * Supports both authenticated and guest checkout
  */
@@ -62,10 +81,17 @@ export async function createOrder(
   data: CreateOrderRequest,
   token?: string
 ): Promise<OrderResponse & { message: string }> {
-  const headers = token ? getAuthHeaders(token) : {};
-  const response = await api.post("/orders", data, {
-    headers,
-  });
+  const config: { headers: Record<string, string> } = {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  };
+  
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  
+  const response = await api.post("/orders", data, config);
   return response.data;
 }
 

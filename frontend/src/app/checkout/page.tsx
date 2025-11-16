@@ -7,7 +7,7 @@ import Header from "@/components/client/Header";
 import Footer from "@/components/client/Footer";
 import { getCart } from "@/lib/apis/client/cart";
 import { getAddresses, createAddress } from "@/lib/apis/client/addresses";
-import { createOrder } from "@/lib/apis/client/orders";
+import { createOrder, getShippingMethods } from "@/lib/apis/client/orders";
 import { getUserTokenFromCookies } from "@/lib/cookies";
 import type { Cart, Address, CreateAddressRequest } from "@/types/client";
 
@@ -55,23 +55,55 @@ export default function CheckoutPage() {
   const [selectedShipping, setSelectedShipping] = useState<
     "inside" | "outside" | null
   >(null);
+  const [shippingMethods, setShippingMethods] = useState<
+    Array<{
+      id: number;
+      name: string;
+      code: string;
+      description: string | null;
+      base_rate: number;
+      estimated_days: number | null;
+      config: Record<string, any> | null;
+    }>
+  >([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showNewAddress, setShowNewAddress] = useState(false);
+  const [showNewBillingAddress, setShowNewBillingAddress] = useState(false);
+  const [showNewShippingAddress, setShowNewShippingAddress] = useState(false);
   const [newAddress, setNewAddress] = useState<CreateAddressRequest>({
     name: "",
     line1: "",
     city: "",
     country_code: "BD",
   });
+  const [newBillingAddress, setNewBillingAddress] =
+    useState<CreateAddressRequest>({
+      name: "",
+      contact_name: "",
+      phone: "",
+      line1: "",
+      line2: "",
+      city: "",
+      state_region: "",
+      postal_code: "",
+      country_code: "BD",
+    });
+  const [newShippingAddress, setNewShippingAddress] =
+    useState<CreateAddressRequest>({
+      name: "",
+      contact_name: "",
+      phone: "",
+      line1: "",
+      line2: "",
+      city: "",
+      state_region: "",
+      postal_code: "",
+      country_code: "BD",
+    });
 
   useEffect(() => {
     loadData();
-    // Load saved shipping selection from localStorage
-    const savedShipping = localStorage.getItem("selectedShipping");
-    if (savedShipping === "inside" || savedShipping === "outside") {
-      setSelectedShipping(savedShipping);
-    }
   }, []);
 
   // Save shipping selection to localStorage whenever it changes
@@ -89,6 +121,26 @@ export default function CheckoutPage() {
 
   async function loadData() {
     const token = await getUserTokenFromCookies();
+
+    // Load shipping methods (available for both guest and authenticated users)
+    try {
+      const shippingMethodsResponse = await getShippingMethods();
+      setShippingMethods(shippingMethodsResponse.data);
+
+      // Load saved shipping selection from localStorage
+      const savedShipping = localStorage.getItem("selectedShipping");
+      if (savedShipping === "inside" || savedShipping === "outside") {
+        const method = shippingMethodsResponse.data.find(
+          (m) => m.config?.option === savedShipping
+        );
+        if (method) {
+          setSelectedShipping(savedShipping as "inside" | "outside");
+          setShippingMethodId(method.id);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading shipping methods:", error);
+    }
 
     if (!token) {
       // Guest checkout - try to load cart from localStorage
@@ -158,20 +210,61 @@ export default function CheckoutPage() {
     }
   }
 
-  async function handleCreateAddress() {
+  async function handleCreateAddress(
+    addressData: CreateAddressRequest,
+    type: "billing" | "shipping" | "both"
+  ) {
     const token = await getUserTokenFromCookies();
     if (!token) return;
 
     try {
-      const response = await createAddress(token, newAddress);
-      setAddresses([...addresses, response.data]);
-      setBillingAddressId(response.data.id);
-      setShippingAddressId(response.data.id);
+      const response = await createAddress(token, addressData);
+      const updatedAddresses = [...addresses, response.data];
+      setAddresses(updatedAddresses);
+
+      const newAddressId = response.data.id;
+
+      if (type === "billing" || type === "both") {
+        setBillingAddressId(newAddressId);
+      }
+      if (type === "shipping" || type === "both") {
+        setShippingAddressId(newAddressId);
+      }
+      // If both, set both IDs to the same address
+      if (type === "both") {
+        setBillingAddressId(newAddressId);
+        setShippingAddressId(newAddressId);
+      }
+
       setShowNewAddress(false);
+      setShowNewBillingAddress(false);
+      setShowNewShippingAddress(false);
       setNewAddress({
         name: "",
         line1: "",
         city: "",
+        country_code: "BD",
+      });
+      setNewBillingAddress({
+        name: "",
+        contact_name: "",
+        phone: "",
+        line1: "",
+        line2: "",
+        city: "",
+        state_region: "",
+        postal_code: "",
+        country_code: "BD",
+      });
+      setNewShippingAddress({
+        name: "",
+        contact_name: "",
+        phone: "",
+        line1: "",
+        line2: "",
+        city: "",
+        state_region: "",
+        postal_code: "",
         country_code: "BD",
       });
     } catch (error: any) {
@@ -230,18 +323,16 @@ export default function CheckoutPage() {
           unit_price: item.unit_price,
         }));
 
-        // Determine shipping cost based on selection
-        const shippingCost =
-          selectedShipping === "inside"
-            ? 60
-            : selectedShipping === "outside"
-            ? 110
-            : 0;
+        // Get selected shipping method
+        const selectedMethod = shippingMethods.find(
+          (m) => m.config?.option === selectedShipping
+        );
+        const shippingCost = selectedMethod?.base_rate || 0;
 
         const orderData = {
           billing_address: billingAddress,
           shipping_address: useSameAddress ? billingAddress : shippingAddress,
-          shipping_method_id: shippingMethodId || undefined,
+          shipping_method_id: selectedMethod?.id || undefined,
           shipping_cost: shippingCost,
           shipping_option: selectedShipping,
           guest_email: guestEmail,
@@ -262,36 +353,62 @@ export default function CheckoutPage() {
       }
     } else {
       // Authenticated checkout
-      if (!billingAddressId || !shippingAddressId) {
-        alert("Please select billing and shipping addresses");
+      if (!token) {
+        alert("Please login to place an order");
         return;
       }
 
-      if (!token) return;
+      if (!billingAddressId || !shippingAddressId) {
+        alert("Please select or create billing and shipping addresses");
+        return;
+      }
 
       setSubmitting(true);
       try {
-        // Determine shipping cost based on selection
-        const shippingCost =
-          selectedShipping === "inside"
-            ? 60
-            : selectedShipping === "outside"
-            ? 110
-            : 0;
-
-        const response = await createOrder(
-          {
-            billing_address_id: billingAddressId,
-            shipping_address_id: shippingAddressId,
-            shipping_method_id: shippingMethodId || undefined,
-            shipping_cost: shippingCost,
-            shipping_option: selectedShipping,
-          },
-          token
+        // Get selected shipping method
+        const selectedMethod = shippingMethods.find(
+          (m) => m.config?.option === selectedShipping
         );
+        const shippingCost = selectedMethod?.base_rate || 0;
+
+        const orderData = {
+          billing_address_id: billingAddressId,
+          shipping_address_id: shippingAddressId,
+          shipping_method_id: selectedMethod?.id || undefined,
+          shipping_cost: shippingCost,
+          shipping_option: selectedShipping,
+        };
+
+        console.log("Submitting order with data:", orderData);
+        console.log("Token present:", !!token);
+        console.log(
+          "Token value:",
+          token ? `${token.substring(0, 20)}...` : "Missing"
+        );
+
+        if (!token) {
+          alert("Authentication token is missing. Please login again.");
+          return;
+        }
+
+        const response = await createOrder(orderData, token);
         router.push(`/orders/${response.data.id}`);
       } catch (error: any) {
-        alert(error.response?.data?.message || "Failed to create order");
+        console.error("Order creation error:", error);
+        const errorMessage =
+          error.response?.data?.message || "Failed to create order";
+        const errorDetails = error.response?.data?.errors;
+        if (errorDetails) {
+          const details = Object.entries(errorDetails)
+            .map(
+              ([key, value]) =>
+                `${key}: ${Array.isArray(value) ? value.join(", ") : value}`
+            )
+            .join("\n");
+          alert(`${errorMessage}\n\n${details}`);
+        } else {
+          alert(errorMessage);
+        }
       } finally {
         setSubmitting(false);
       }
@@ -734,63 +851,450 @@ export default function CheckoutPage() {
               ) : (
                 <>
                   {/* Authenticated User Address Selection */}
-                  <div className="bg-white rounded-lg shadow-sm border border-zinc-200 p-6">
-                    <h2 className="text-xl font-bold text-zinc-900 mb-4">
-                      Billing Address
-                    </h2>
-                    {addresses.length > 0 ? (
-                      <select
-                        value={billingAddressId || ""}
-                        onChange={(e) =>
-                          setBillingAddressId(
-                            e.target.value ? parseInt(e.target.value) : null
-                          )
-                        }
-                        className="w-full px-3 py-2 border border-zinc-300 rounded-md mb-4"
-                      >
-                        <option value="">Select billing address</option>
-                        {addresses.map((addr) => (
-                          <option key={addr.id} value={addr.id}>
-                            {addr.name} - {addr.full_address}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <p className="text-zinc-500 mb-4">No addresses found</p>
-                    )}
-                    <button
-                      onClick={() => setShowNewAddress(!showNewAddress)}
-                      className="text-blue-600 hover:text-blue-700"
-                    >
-                      {showNewAddress ? "Cancel" : "+ Add New Address"}
-                    </button>
-                  </div>
+                  {addresses.length > 0 ? (
+                    <>
+                      <div className="bg-white rounded-lg shadow-sm border border-zinc-200 p-6">
+                        <h2 className="text-xl font-bold text-zinc-900 mb-4">
+                          Billing Address
+                        </h2>
+                        <select
+                          value={billingAddressId || ""}
+                          onChange={(e) =>
+                            setBillingAddressId(
+                              e.target.value ? parseInt(e.target.value) : null
+                            )
+                          }
+                          className="w-full px-3 py-2 border border-zinc-300 rounded-md mb-4"
+                        >
+                          <option value="">Select billing address</option>
+                          {addresses.map((addr) => (
+                            <option key={addr.id} value={addr.id}>
+                              {addr.name} - {addr.full_address}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() =>
+                            setShowNewBillingAddress(!showNewBillingAddress)
+                          }
+                          className="text-blue-600 hover:text-blue-700 text-sm"
+                        >
+                          {showNewBillingAddress
+                            ? "Cancel"
+                            : "+ Add New Billing Address"}
+                        </button>
+                      </div>
 
-                  <div className="bg-white rounded-lg shadow-sm border border-zinc-200 p-6">
-                    <h2 className="text-xl font-bold text-zinc-900 mb-4">
-                      Shipping Address
-                    </h2>
-                    {addresses.length > 0 ? (
-                      <select
-                        value={shippingAddressId || ""}
-                        onChange={(e) =>
-                          setShippingAddressId(
-                            e.target.value ? parseInt(e.target.value) : null
-                          )
-                        }
-                        className="w-full px-3 py-2 border border-zinc-300 rounded-md"
-                      >
-                        <option value="">Select shipping address</option>
-                        {addresses.map((addr) => (
-                          <option key={addr.id} value={addr.id}>
-                            {addr.name} - {addr.full_address}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <p className="text-zinc-500">No addresses found</p>
-                    )}
-                  </div>
+                      <div className="bg-white rounded-lg shadow-sm border border-zinc-200 p-6">
+                        <h2 className="text-xl font-bold text-zinc-900 mb-4">
+                          Shipping Address
+                        </h2>
+                        <select
+                          value={shippingAddressId || ""}
+                          onChange={(e) =>
+                            setShippingAddressId(
+                              e.target.value ? parseInt(e.target.value) : null
+                            )
+                          }
+                          className="w-full px-3 py-2 border border-zinc-300 rounded-md"
+                        >
+                          <option value="">Select shipping address</option>
+                          {addresses.map((addr) => (
+                            <option key={addr.id} value={addr.id}>
+                              {addr.name} - {addr.full_address}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() =>
+                            setShowNewShippingAddress(!showNewShippingAddress)
+                          }
+                          className="text-blue-600 hover:text-blue-700 text-sm mt-4"
+                        >
+                          {showNewShippingAddress
+                            ? "Cancel"
+                            : "+ Add New Shipping Address"}
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Show address forms directly when no addresses exist */}
+                      <div className="bg-white rounded-lg shadow-sm border border-zinc-200 p-6">
+                        <h2 className="text-xl font-bold text-zinc-900 mb-4">
+                          Billing Address
+                        </h2>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-zinc-700 mb-1">
+                              Name <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={newBillingAddress.name}
+                              onChange={(e) =>
+                                setNewBillingAddress({
+                                  ...newBillingAddress,
+                                  name: e.target.value,
+                                })
+                              }
+                              className="w-full px-3 py-2 border border-zinc-300 rounded-md"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-zinc-700 mb-1">
+                              Contact Name
+                            </label>
+                            <input
+                              type="text"
+                              value={newBillingAddress.contact_name || ""}
+                              onChange={(e) =>
+                                setNewBillingAddress({
+                                  ...newBillingAddress,
+                                  contact_name: e.target.value,
+                                })
+                              }
+                              className="w-full px-3 py-2 border border-zinc-300 rounded-md"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-zinc-700 mb-1">
+                              Phone
+                            </label>
+                            <input
+                              type="tel"
+                              value={newBillingAddress.phone || ""}
+                              onChange={(e) =>
+                                setNewBillingAddress({
+                                  ...newBillingAddress,
+                                  phone: e.target.value,
+                                })
+                              }
+                              className="w-full px-3 py-2 border border-zinc-300 rounded-md"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-zinc-700 mb-1">
+                              Address Line 1{" "}
+                              <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={newBillingAddress.line1}
+                              onChange={(e) =>
+                                setNewBillingAddress({
+                                  ...newBillingAddress,
+                                  line1: e.target.value,
+                                })
+                              }
+                              className="w-full px-3 py-2 border border-zinc-300 rounded-md"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-zinc-700 mb-1">
+                              Address Line 2
+                            </label>
+                            <input
+                              type="text"
+                              value={newBillingAddress.line2 || ""}
+                              onChange={(e) =>
+                                setNewBillingAddress({
+                                  ...newBillingAddress,
+                                  line2: e.target.value,
+                                })
+                              }
+                              className="w-full px-3 py-2 border border-zinc-300 rounded-md"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-zinc-700 mb-1">
+                                City <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={newBillingAddress.city}
+                                onChange={(e) =>
+                                  setNewBillingAddress({
+                                    ...newBillingAddress,
+                                    city: e.target.value,
+                                  })
+                                }
+                                className="w-full px-3 py-2 border border-zinc-300 rounded-md"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-zinc-700 mb-1">
+                                State/Region
+                              </label>
+                              <input
+                                type="text"
+                                value={newBillingAddress.state_region || ""}
+                                onChange={(e) =>
+                                  setNewBillingAddress({
+                                    ...newBillingAddress,
+                                    state_region: e.target.value,
+                                  })
+                                }
+                                className="w-full px-3 py-2 border border-zinc-300 rounded-md"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-zinc-700 mb-1">
+                                Postal Code
+                              </label>
+                              <input
+                                type="text"
+                                value={newBillingAddress.postal_code || ""}
+                                onChange={(e) =>
+                                  setNewBillingAddress({
+                                    ...newBillingAddress,
+                                    postal_code: e.target.value,
+                                  })
+                                }
+                                className="w-full px-3 py-2 border border-zinc-300 rounded-md"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-zinc-700 mb-1">
+                                Country Code{" "}
+                                <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={newBillingAddress.country_code}
+                                onChange={(e) =>
+                                  setNewBillingAddress({
+                                    ...newBillingAddress,
+                                    country_code: e.target.value,
+                                  })
+                                }
+                                className="w-full px-3 py-2 border border-zinc-300 rounded-md"
+                                required
+                              />
+                            </div>
+                          </div>
+                          <button
+                            onClick={async () => {
+                              await handleCreateAddress(
+                                newBillingAddress,
+                                useSameAddress ? "both" : "billing"
+                              );
+                              // Show success message
+                              alert("Billing address saved successfully!");
+                            }}
+                            className="bg-zinc-900 text-white px-6 py-2 rounded-md hover:bg-zinc-800"
+                          >
+                            Save Billing Address
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="bg-white rounded-lg shadow-sm border border-zinc-200 p-6">
+                        <h2 className="text-xl font-bold text-zinc-900 mb-4">
+                          Shipping Address
+                        </h2>
+                        <label className="flex items-center gap-2 mb-4">
+                          <input
+                            type="checkbox"
+                            checked={useSameAddress}
+                            onChange={(e) => {
+                              setUseSameAddress(e.target.checked);
+                              if (e.target.checked) {
+                                setNewShippingAddress(newBillingAddress);
+                              }
+                            }}
+                            className="h-4 w-4"
+                          />
+                          <span className="text-sm text-zinc-700">
+                            Same as billing address
+                          </span>
+                        </label>
+                        {!useSameAddress && (
+                          <div className="space-y-4">
+                            <div>
+                              <label className="block text-sm font-medium text-zinc-700 mb-1">
+                                Name <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={newShippingAddress.name}
+                                onChange={(e) =>
+                                  setNewShippingAddress({
+                                    ...newShippingAddress,
+                                    name: e.target.value,
+                                  })
+                                }
+                                className="w-full px-3 py-2 border border-zinc-300 rounded-md"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-zinc-700 mb-1">
+                                Contact Name
+                              </label>
+                              <input
+                                type="text"
+                                value={newShippingAddress.contact_name || ""}
+                                onChange={(e) =>
+                                  setNewShippingAddress({
+                                    ...newShippingAddress,
+                                    contact_name: e.target.value,
+                                  })
+                                }
+                                className="w-full px-3 py-2 border border-zinc-300 rounded-md"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-zinc-700 mb-1">
+                                Phone
+                              </label>
+                              <input
+                                type="tel"
+                                value={newShippingAddress.phone || ""}
+                                onChange={(e) =>
+                                  setNewShippingAddress({
+                                    ...newShippingAddress,
+                                    phone: e.target.value,
+                                  })
+                                }
+                                className="w-full px-3 py-2 border border-zinc-300 rounded-md"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-zinc-700 mb-1">
+                                Address Line 1{" "}
+                                <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={newShippingAddress.line1}
+                                onChange={(e) =>
+                                  setNewShippingAddress({
+                                    ...newShippingAddress,
+                                    line1: e.target.value,
+                                  })
+                                }
+                                className="w-full px-3 py-2 border border-zinc-300 rounded-md"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-zinc-700 mb-1">
+                                Address Line 2
+                              </label>
+                              <input
+                                type="text"
+                                value={newShippingAddress.line2 || ""}
+                                onChange={(e) =>
+                                  setNewShippingAddress({
+                                    ...newShippingAddress,
+                                    line2: e.target.value,
+                                  })
+                                }
+                                className="w-full px-3 py-2 border border-zinc-300 rounded-md"
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-zinc-700 mb-1">
+                                  City <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  value={newShippingAddress.city}
+                                  onChange={(e) =>
+                                    setNewShippingAddress({
+                                      ...newShippingAddress,
+                                      city: e.target.value,
+                                    })
+                                  }
+                                  className="w-full px-3 py-2 border border-zinc-300 rounded-md"
+                                  required
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-zinc-700 mb-1">
+                                  State/Region
+                                </label>
+                                <input
+                                  type="text"
+                                  value={newShippingAddress.state_region || ""}
+                                  onChange={(e) =>
+                                    setNewShippingAddress({
+                                      ...newShippingAddress,
+                                      state_region: e.target.value,
+                                    })
+                                  }
+                                  className="w-full px-3 py-2 border border-zinc-300 rounded-md"
+                                />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-zinc-700 mb-1">
+                                  Postal Code
+                                </label>
+                                <input
+                                  type="text"
+                                  value={newShippingAddress.postal_code || ""}
+                                  onChange={(e) =>
+                                    setNewShippingAddress({
+                                      ...newShippingAddress,
+                                      postal_code: e.target.value,
+                                    })
+                                  }
+                                  className="w-full px-3 py-2 border border-zinc-300 rounded-md"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-zinc-700 mb-1">
+                                  Country Code{" "}
+                                  <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  value={newShippingAddress.country_code}
+                                  onChange={(e) =>
+                                    setNewShippingAddress({
+                                      ...newShippingAddress,
+                                      country_code: e.target.value,
+                                    })
+                                  }
+                                  className="w-full px-3 py-2 border border-zinc-300 rounded-md"
+                                  required
+                                />
+                              </div>
+                            </div>
+                            <button
+                              onClick={async () => {
+                                await handleCreateAddress(
+                                  newShippingAddress,
+                                  "shipping"
+                                );
+                                // Show success message
+                                alert("Shipping address saved successfully!");
+                              }}
+                              className="bg-zinc-900 text-white px-6 py-2 rounded-md hover:bg-zinc-800"
+                            >
+                              Save Shipping Address
+                            </button>
+                          </div>
+                        )}
+                        {useSameAddress && (
+                          <p className="text-zinc-500 text-sm">
+                            Shipping address will be the same as billing
+                            address.
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  )}
 
                   {showNewAddress && (
                     <div className="bg-white rounded-lg shadow-sm border border-zinc-200 p-6">
@@ -867,7 +1371,9 @@ export default function CheckoutPage() {
                           />
                         </div>
                         <button
-                          onClick={handleCreateAddress}
+                          onClick={() =>
+                            handleCreateAddress(newAddress, "both")
+                          }
                           className="bg-zinc-900 text-white px-6 py-2 rounded-md hover:bg-zinc-800"
                         >
                           Save Address
@@ -911,62 +1417,59 @@ export default function CheckoutPage() {
                     Shipping
                   </h3>
                   <div className="space-y-3">
-                    <label
-                      className={`flex items-center justify-between p-3 border rounded-md cursor-pointer transition-colors ${
-                        selectedShipping === "inside"
-                          ? "border-zinc-900 bg-zinc-50"
-                          : "border-zinc-300 hover:bg-zinc-50"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="radio"
-                          name="shipping"
-                          value="inside"
-                          checked={selectedShipping === "inside"}
-                          onChange={(e) => setSelectedShipping("inside")}
-                          className="w-4 h-4 text-zinc-900"
-                        />
-                        <span className="text-sm text-zinc-700">
-                          ঢাকার ভেতরে:
-                        </span>
-                      </div>
-                      <span className="text-sm font-medium text-zinc-900">
-                        ৳ 60
-                      </span>
-                    </label>
-                    <label
-                      className={`flex items-center justify-between p-3 border rounded-md cursor-pointer transition-colors ${
-                        selectedShipping === "outside"
-                          ? "border-zinc-900 bg-zinc-50"
-                          : "border-zinc-300 hover:bg-zinc-50"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="radio"
-                          name="shipping"
-                          value="outside"
-                          checked={selectedShipping === "outside"}
-                          onChange={(e) => setSelectedShipping("outside")}
-                          className="w-4 h-4 text-zinc-900"
-                        />
-                        <span className="text-sm text-zinc-700">
-                          ঢাকার বাহিরে:
-                        </span>
-                      </div>
-                      <span className="text-sm font-medium text-zinc-900">
-                        ৳ 110
-                      </span>
-                    </label>
+                    {shippingMethods.map((method) => {
+                      const option = method.config?.option as
+                        | "inside"
+                        | "outside"
+                        | undefined;
+                      if (!option) return null;
+
+                      return (
+                        <label
+                          key={method.id}
+                          className={`flex items-center justify-between p-3 border rounded-md cursor-pointer transition-colors ${
+                            selectedShipping === option
+                              ? "border-zinc-900 bg-zinc-50"
+                              : "border-zinc-300 hover:bg-zinc-50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="radio"
+                              name="shipping"
+                              value={option}
+                              checked={selectedShipping === option}
+                              onChange={() => {
+                                setSelectedShipping(option);
+                                setShippingMethodId(method.id);
+                              }}
+                              className="w-4 h-4 text-zinc-900"
+                            />
+                            <span className="text-sm text-zinc-700">
+                              {method.name}:
+                            </span>
+                          </div>
+                          <span className="text-sm font-medium text-zinc-900">
+                            ৳ {method.base_rate.toFixed(2)}
+                          </span>
+                        </label>
+                      );
+                    })}
                   </div>
                   {selectedShipping && (
                     <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded-md">
                       <p className="text-xs text-blue-800">
                         <span className="font-semibold">Selected:</span>{" "}
-                        {selectedShipping === "inside"
-                          ? "ঢাকার ভেতরে (৳ 60)"
-                          : "ঢাকার বাহিরে (৳ 110)"}
+                        {
+                          shippingMethods.find(
+                            (m) => m.config?.option === selectedShipping
+                          )?.name
+                        }{" "}
+                        (৳{" "}
+                        {shippingMethods
+                          .find((m) => m.config?.option === selectedShipping)
+                          ?.base_rate.toFixed(2)}
+                        )
                       </p>
                     </div>
                   )}
@@ -979,11 +1482,9 @@ export default function CheckoutPage() {
                       ৳
                       {(
                         cart.subtotal +
-                        (selectedShipping === "inside"
-                          ? 60
-                          : selectedShipping === "outside"
-                          ? 110
-                          : 0)
+                        (shippingMethods.find(
+                          (m) => m.config?.option === selectedShipping
+                        )?.base_rate || 0)
                       ).toFixed(2)}
                     </span>
                   </div>
