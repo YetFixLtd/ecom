@@ -98,4 +98,12 @@ class Fulfillment extends Model
     {
         return $this->status === 'canceled';
     }
+
+    /**
+     * Check if the fulfillment is returned.
+     */
+    public function isReturned(): bool
+    {
+        return $this->status === 'returned';
+    }
 }

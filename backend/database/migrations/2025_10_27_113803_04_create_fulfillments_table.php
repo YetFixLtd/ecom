@@ -8,7 +8,7 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * Creates the fulfillments table for tracking order shipments.
      * Optional feature for managing order fulfillment and delivery.
      */
@@ -17,7 +17,7 @@ return new class extends Migration
         Schema::create('fulfillments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('order_id')->constrained('orders')->cascadeOnDelete();
-            $table->enum('status', ['pending', 'packed', 'shipped', 'delivered', 'canceled'])->default('pending');
+            $table->enum('status', ['pending', 'packed', 'shipped', 'delivered', 'canceled', "returned"])->default('pending');
             $table->string('tracking_number', 100)->nullable();
             $table->string('carrier', 64)->nullable()->comment('e.g., DHL, FedEx, Local Courier');
             $table->timestamp('shipped_at')->nullable();

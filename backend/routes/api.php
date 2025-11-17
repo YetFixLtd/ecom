@@ -16,12 +16,14 @@ use App\Http\Controllers\Api\Admin\Inventory\AdjustmentController;
 use App\Http\Controllers\Api\Admin\Inventory\TransferController;
 use App\Http\Controllers\Api\Admin\Inventory\MovementController;
 use App\Http\Controllers\Api\Admin\Inventory\ReservationController;
+use App\Http\Controllers\Api\Admin\OrderController;
+use App\Http\Controllers\Api\Admin\FulfillmentController;
 use App\Http\Controllers\Api\Client\AddressController;
 use App\Http\Controllers\Api\Client\ProductController as ClientProductController;
 use App\Http\Controllers\Api\Client\CategoryController as ClientCategoryController;
 use App\Http\Controllers\Api\Client\BrandController as ClientBrandController;
 use App\Http\Controllers\Api\Client\CartController;
-use App\Http\Controllers\Api\Client\OrderController;
+use App\Http\Controllers\Api\Client\OrderController as ClientOrderController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -96,13 +98,13 @@ Route::prefix('v1')->group(function () {
         Route::delete('/cart', [CartController::class, 'clear'])->name('api.cart.clear');
 
         // Orders
-        Route::get('/orders', [OrderController::class, 'index'])->name('api.orders.index');
+        Route::get('/orders', [ClientOrderController::class, 'index'])->name('api.orders.index');
     });
 
     // Guest checkout and order viewing - accessible without authentication
-    Route::get('/shipping-methods', [OrderController::class, 'shippingMethods'])->name('api.shipping-methods.index');
-    Route::post('/orders', [OrderController::class, 'store'])->name('api.orders.store');
-    Route::get('/orders/{id}', [OrderController::class, 'show'])->name('api.orders.show');
+    Route::get('/shipping-methods', [ClientOrderController::class, 'shippingMethods'])->name('api.shipping-methods.index');
+    Route::post('/orders', [ClientOrderController::class, 'store'])->name('api.orders.store');
+    Route::get('/orders/{id}', [ClientOrderController::class, 'show'])->name('api.orders.show');
 
     // ========================================
     // Admin Authentication & Management Routes
@@ -238,6 +240,21 @@ Route::prefix('v1')->group(function () {
             // Reservation/Release
             Route::post('/inventory/reserve', [ReservationController::class, 'reserve'])->name('api.admin.inventory.reserve');
             Route::post('/inventory/release', [ReservationController::class, 'release'])->name('api.admin.inventory.release');
+
+            // ========================================
+            // Admin Order Management Routes
+            // ========================================
+
+            // Orders
+            Route::get('/orders', [OrderController::class, 'index'])->name('api.admin.orders.index');
+            Route::get('/orders/{id}', [OrderController::class, 'show'])->name('api.admin.orders.show');
+            Route::patch('/orders/{id}/status', [OrderController::class, 'updateStatus'])->name('api.admin.orders.update-status');
+
+            // Fulfillments
+            Route::post('/orders/{orderId}/fulfillments', [FulfillmentController::class, 'store'])->name('api.admin.fulfillments.store');
+            Route::get('/fulfillments/{id}', [FulfillmentController::class, 'show'])->name('api.admin.fulfillments.show');
+            Route::patch('/fulfillments/{id}', [FulfillmentController::class, 'update'])->name('api.admin.fulfillments.update');
+            Route::patch('/fulfillments/{id}/status', [FulfillmentController::class, 'updateStatus'])->name('api.admin.fulfillments.update-status');
         });
     });
 });
