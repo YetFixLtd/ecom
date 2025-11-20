@@ -137,15 +137,17 @@ export interface InventoryAdjustment {
 }
 
 export type MovementType =
+  | "purchase"
+  | "sale"
+  | "return_in"
+  | "return_out"
   | "adjustment"
   | "transfer_in"
   | "transfer_out"
+  | "production_in"
+  | "consumption_out"
   | "reservation"
-  | "release"
-  | "sale"
-  | "return"
-  | "damaged"
-  | "expired";
+  | "release";
 
 export interface InventoryMovement {
   id: number;

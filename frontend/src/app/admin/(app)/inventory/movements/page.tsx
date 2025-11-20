@@ -96,24 +96,24 @@ export default function MovementsPage() {
   };
 
   const getMovementTypeBadge = (type: MovementType) => {
-    const styles: Record<string, string> = {
+    const styles: Record<MovementType, string> = {
+      purchase: "bg-green-100 text-green-700",
+      sale: "bg-red-100 text-red-700",
+      return_in: "bg-teal-100 text-teal-700",
+      return_out: "bg-orange-100 text-orange-700",
       adjustment: "bg-blue-100 text-blue-700",
-      transfer_in: "bg-green-100 text-green-700",
-      transfer_out: "bg-orange-100 text-orange-700",
+      transfer_in: "bg-green-50 text-green-700",
+      transfer_out: "bg-orange-50 text-orange-700",
+      production_in: "bg-emerald-100 text-emerald-700",
+      consumption_out: "bg-amber-100 text-amber-700",
       reservation: "bg-purple-100 text-purple-700",
       release: "bg-yellow-100 text-yellow-700",
-      sale: "bg-red-100 text-red-700",
-      return: "bg-teal-100 text-teal-700",
-      damaged: "bg-red-100 text-red-700",
-      expired: "bg-gray-100 text-gray-700",
     };
     return (
       <span
-        className={`rounded-full px-2 py-1 text-xs font-medium ${
-          styles[type] || styles.adjustment
-        }`}
+        className={`rounded-full px-2 py-1 text-xs font-medium ${styles[type]}`}
       >
-        {type.replace("_", " ").toUpperCase()}
+        {type.replaceAll("_", " ").toUpperCase()}
       </span>
     );
   };
@@ -182,15 +182,17 @@ export default function MovementsPage() {
               className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
             >
               <option value="">All Types</option>
+              <option value="purchase">Purchase</option>
+              <option value="sale">Sale</option>
+              <option value="return_in">Return In</option>
+              <option value="return_out">Return Out</option>
               <option value="adjustment">Adjustment</option>
               <option value="transfer_in">Transfer In</option>
               <option value="transfer_out">Transfer Out</option>
+              <option value="production_in">Production In</option>
+              <option value="consumption_out">Consumption Out</option>
               <option value="reservation">Reservation</option>
               <option value="release">Release</option>
-              <option value="sale">Sale</option>
-              <option value="return">Return</option>
-              <option value="damaged">Damaged</option>
-              <option value="expired">Expired</option>
             </select>
           </div>
 

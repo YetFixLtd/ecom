@@ -19,6 +19,7 @@ import {
   TrendingUp,
   Activity,
   Truck,
+  ShoppingCart,
 } from "lucide-react";
 
 const navItems = [
@@ -90,6 +91,12 @@ const navItems = [
     ],
   },
   {
+    href: "/admin/orders",
+    label: "Orders",
+    Icon: ShoppingCart,
+    disabled: false,
+  },
+  {
     href: "/admin/shipping-methods",
     label: "Shipping Methods",
     Icon: Truck,
@@ -134,6 +141,7 @@ export function Sidebar() {
 
   const isCatalogActive = pathname.startsWith("/admin/catalog");
   const isInventoryActive = pathname.startsWith("/admin/inventory");
+  const isOrdersActive = pathname.startsWith("/admin/orders") || pathname.startsWith("/admin/fulfillments");
 
   return (
     <aside className="hidden w-64 shrink-0 border-r bg-white p-4 md:block">
@@ -148,8 +156,10 @@ export function Sidebar() {
               ? pathname === "/admin"
               : item.href === "/admin/catalog"
               ? isCatalogActive
-              : item.href === "/admin/inventory"
+              :             item.href === "/admin/inventory"
               ? isInventoryActive
+              : item.href === "/admin/orders"
+              ? isOrdersActive
               : pathname === item.href || pathname.startsWith(item.href + "/");
 
           const hasSubmenu = item.submenu && item.submenu.length > 0;

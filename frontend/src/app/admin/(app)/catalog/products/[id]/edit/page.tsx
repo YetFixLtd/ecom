@@ -74,6 +74,27 @@ export default function EditProductPage() {
   const [attributes, setAttributes] = useState<Attribute[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [variants, setVariants] = useState<UpdateProductVariantData[]>([]);
+  const [simpleProductPricing, setSimpleProductPricing] = useState<{
+    variant_id: number | null;
+    sku: string;
+    price: number | null;
+    compare_at_price: number | null;
+    cost_price: number | null;
+    track_stock: boolean;
+    allow_backorder: boolean;
+    status: UpdateProductVariantData["status"];
+    currency: string;
+  }>({
+    variant_id: null,
+    sku: "",
+    price: null,
+    compare_at_price: null,
+    cost_price: null,
+    track_stock: true,
+    allow_backorder: false,
+    status: "active",
+    currency: "USD",
+  });
   const [editingVariantIndex, setEditingVariantIndex] = useState<number | null>(
     null
   );
@@ -168,6 +189,41 @@ export default function EditProductPage() {
               };
             });
           setVariants(existingVariants);
+
+          if (
+            productData.product_type === "simple" &&
+            productData.variants.length > 0
+          ) {
+            const simpleVariant = productData.variants[0];
+            setSimpleProductPricing({
+              variant_id: simpleVariant.id ?? null,
+              sku: simpleVariant.sku ?? "",
+              price: simpleVariant.price ?? null,
+              compare_at_price: simpleVariant.compare_at_price ?? null,
+              cost_price: simpleVariant.cost_price ?? null,
+              track_stock:
+                simpleVariant.track_stock !== undefined
+                  ? simpleVariant.track_stock
+                  : true,
+              allow_backorder:
+                simpleVariant.allow_backorder !== undefined
+                  ? simpleVariant.allow_backorder
+                  : false,
+              status:
+                (simpleVariant.status as UpdateProductVariantData["status"]) ||
+                "active",
+              currency: simpleVariant.currency || "USD",
+            });
+          }
+        } else {
+          // Ensure simple pricing has defaults even if no variant exists yet
+          if (productData.product_type === "simple") {
+            setSimpleProductPricing((prev) => ({
+              ...prev,
+              sku: prev.sku || "",
+              price: prev.price ?? null,
+            }));
+          }
         }
 
         // Pre-fill form with product data
@@ -404,6 +460,47 @@ export default function EditProductPage() {
         updateData.images = newImageFiles;
       }
 
+      // Handle simple product pricing
+      if (productType === "simple") {
+        if (
+          !simpleProductPricing.sku ||
+          simpleProductPricing.sku.trim() === ""
+        ) {
+          setServerError("SKU is required for simple products.");
+          setIsSubmitting(false);
+          return;
+        }
+        if (
+          simpleProductPricing.price === null ||
+          simpleProductPricing.price === undefined ||
+          simpleProductPricing.price <= 0
+        ) {
+          setServerError(
+            "Price is required and must be greater than 0 for simple products."
+          );
+          setIsSubmitting(false);
+          return;
+        }
+
+        updateData.variants = [
+          {
+            id: simpleProductPricing.variant_id ?? undefined,
+            sku: simpleProductPricing.sku.trim(),
+            price: simpleProductPricing.price,
+            compare_at_price: simpleProductPricing.compare_at_price,
+            cost_price: simpleProductPricing.cost_price,
+            currency:
+              simpleProductPricing.currency ||
+              product?.variants?.[0]?.currency ||
+              "USD",
+            track_stock: simpleProductPricing.track_stock,
+            allow_backorder: simpleProductPricing.allow_backorder,
+            status: simpleProductPricing.status || "active",
+            attribute_values: [],
+          },
+        ];
+      }
+
       // Validate and add variants if product type is variant
       // Only send variants if product type is variant AND variants exist
       // If variants exist, validate them; otherwise don't send them (backend will handle missing variants)
@@ -428,9 +525,7 @@ export default function EditProductPage() {
 
         // Check if any variants were filtered out
         if (validVariants.length === 0) {
-          setServerError(
-            "All variants must have SKU and price."
-          );
+          setServerError("All variants must have SKU and price.");
           setIsSubmitting(false);
           return;
         }
@@ -750,6 +845,97 @@ export default function EditProductPage() {
                 </div>
               </div>
             </div>
+
+            {/* Simple Product Pricing */}
+            {productType === "simple" && (
+              <div className="rounded-lg border bg-white p-6">
+                <h2 className="mb-4 text-lg font-semibold">Pricing</h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">
+                      SKU <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={simpleProductPricing.sku}
+                      onChange={(e) =>
+                        setSimpleProductPricing((prev) => ({
+                          ...prev,
+                          sku: e.target.value,
+                        }))
+                      }
+                      className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      placeholder="e.g., PRODUCT-001"
+                    />
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">
+                        Price <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={simpleProductPricing.price ?? ""}
+                        onChange={(e) =>
+                          setSimpleProductPricing((prev) => ({
+                            ...prev,
+                            price: e.target.value
+                              ? Number(e.target.value)
+                              : null,
+                          }))
+                        }
+                        className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">
+                        Compare At Price
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={simpleProductPricing.compare_at_price ?? ""}
+                        onChange={(e) =>
+                          setSimpleProductPricing((prev) => ({
+                            ...prev,
+                            compare_at_price: e.target.value
+                              ? Number(e.target.value)
+                              : null,
+                          }))
+                        }
+                        className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">
+                        Cost Price
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={simpleProductPricing.cost_price ?? ""}
+                        onChange={(e) =>
+                          setSimpleProductPricing((prev) => ({
+                            ...prev,
+                            cost_price: e.target.value
+                              ? Number(e.target.value)
+                              : null,
+                          }))
+                        }
+                        className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Variants - Only show if product type is variant */}
             {productType === "variant" && (

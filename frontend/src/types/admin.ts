@@ -28,3 +28,18 @@ export interface AdministratorListResponse {
     total: number;
   };
 }
+
+// Order and Fulfillment types (also exported from orders.ts API file)
+export type OrderStatus =
+  | "pending"
+  | "paid"
+  | "fulfilled"
+  | "canceled"
+  | "refunded";
+export type FulfillmentStatus =
+  | "pending"
+  | "packed"
+  | "shipped"
+  | "delivered"
+  | "canceled"
+  | "returned";
