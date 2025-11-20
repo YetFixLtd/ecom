@@ -28,6 +28,9 @@ class CategoryStoreRequest extends ApiFormRequest
             'slug' => ['nullable', 'string', 'max:255', 'unique:categories,slug'],
             'path' => ['nullable', 'string', 'max:500'],
             'position' => ['nullable', 'integer', 'min:0'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,gif,webp', 'max:2048'],
+            'is_featured' => ['nullable', 'boolean'],
+            'status' => ['nullable', 'string', Rule::in(['active', 'inactive'])],
         ];
     }
 }

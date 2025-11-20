@@ -26,6 +26,10 @@ class Category extends Model
         'slug',
         'path',
         'position',
+        'image_url',
+        'image_path',
+        'is_featured',
+        'status',
     ];
 
     /**
@@ -37,6 +41,7 @@ class Category extends Model
     {
         return [
             'position' => 'integer',
+            'is_featured' => 'boolean',
         ];
     }
 
@@ -54,6 +59,16 @@ class Category extends Model
     public function children()
     {
         return $this->hasMany(Category::class, 'parent_id');
+    }
+
+    /**
+     * Get only active child categories (for client-facing queries).
+     */
+    public function activeChildren()
+    {
+        return $this->hasMany(Category::class, 'parent_id')
+            ->where('status', 'active')
+            ->orderBy('position');
     }
 
     /**

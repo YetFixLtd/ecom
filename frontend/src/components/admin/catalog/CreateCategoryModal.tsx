@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { X } from "lucide-react";
+import { X, Upload } from "lucide-react";
 import { createCategory, type CreateCategoryData } from "@/lib/apis/categories";
 import { getAdminTokenFromCookies } from "@/lib/cookies";
 import { AxiosError } from "axios";
@@ -16,6 +16,8 @@ const schema = z.object({
   parent_id: z.number().nullable().optional(),
   position: z.number().min(0).optional(),
   is_active: z.boolean().optional(),
+  is_featured: z.boolean().optional(),
+  status: z.enum(["active", "inactive"]).optional(),
   meta_title: z.string().optional(),
   meta_description: z.string().optional(),
 });
@@ -38,6 +40,8 @@ interface Props {
 export function CreateCategoryModal({ parentId, onClose, onSuccess }: Props) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const {
     register,
@@ -49,9 +53,27 @@ export function CreateCategoryModal({ parentId, onClose, onSuccess }: Props) {
     defaultValues: {
       parent_id: parentId || null,
       is_active: true,
+      is_featured: false,
+      status: "active",
       position: 0,
     },
   });
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedImage(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const removeImage = () => {
+    setSelectedImage(null);
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+      setImagePreview(null);
+    }
+  };
 
   const onSubmit = async (values: FormValues) => {
     setServerError(null);
@@ -64,7 +86,11 @@ export function CreateCategoryModal({ parentId, onClose, onSuccess }: Props) {
         return;
       }
 
-      await createCategory(token, values as CreateCategoryData);
+      await createCategory(
+        token,
+        values as CreateCategoryData,
+        selectedImage || undefined
+      );
       onSuccess();
     } catch (error) {
       if (error instanceof AxiosError && error.response) {
@@ -126,7 +152,9 @@ export function CreateCategoryModal({ parentId, onClose, onSuccess }: Props) {
                 placeholder="Category name"
               />
               {errors.name && (
-                <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.name.message}
+                </p>
               )}
             </div>
 
@@ -139,12 +167,16 @@ export function CreateCategoryModal({ parentId, onClose, onSuccess }: Props) {
                 placeholder="Auto-generated if empty"
               />
               {errors.slug && (
-                <p className="mt-1 text-sm text-red-600">{errors.slug.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.slug.message}
+                </p>
               )}
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium">Description</label>
+              <label className="mb-1 block text-sm font-medium">
+                Description
+              </label>
               <textarea
                 {...register("description")}
                 rows={3}
@@ -152,7 +184,9 @@ export function CreateCategoryModal({ parentId, onClose, onSuccess }: Props) {
                 placeholder="Category description"
               />
               {errors.description && (
-                <p className="mt-1 text-sm text-red-600">{errors.description.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.description.message}
+                </p>
               )}
             </div>
 
@@ -162,15 +196,64 @@ export function CreateCategoryModal({ parentId, onClose, onSuccess }: Props) {
               </div>
             )}
 
+            <div>
+              <label className="mb-1 block text-sm font-medium">
+                Category Image
+              </label>
+              {imagePreview ? (
+                <div className="relative">
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="h-32 w-full rounded-md object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    className="absolute right-2 top-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed border-gray-300 px-4 py-6 hover:border-gray-400">
+                  <Upload className="h-8 w-8 text-gray-400" />
+                  <span className="mt-2 text-sm text-gray-600">
+                    Click to upload image
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+                </label>
+              )}
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium">Status</label>
+              <select
+                {...register("status")}
+                className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+              <p className="mt-1 text-xs text-gray-500">
+                Inactive categories won&apos;t be visible to clients
+              </p>
+            </div>
+
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
-                {...register("is_active")}
-                id="is_active"
+                {...register("is_featured")}
+                id="is_featured"
                 className="h-4 w-4 rounded border-gray-300 text-blue-600"
               />
-              <label htmlFor="is_active" className="text-sm font-medium">
-                Active
+              <label htmlFor="is_featured" className="text-sm font-medium">
+                Featured
               </label>
             </div>
           </div>
@@ -197,4 +280,3 @@ export function CreateCategoryModal({ parentId, onClose, onSuccess }: Props) {
     </div>
   );
 }
-

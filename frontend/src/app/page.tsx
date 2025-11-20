@@ -41,7 +41,7 @@ export default async function Home() {
       <PromotionalDeals />
       <ProductTabs />
       <LazyLoadProducts />
-      <NewsletterSignup />
+      {/* <NewsletterSignup /> */}
 
       <Footer />
     </div>

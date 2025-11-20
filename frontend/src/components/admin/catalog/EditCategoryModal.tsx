@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { X } from "lucide-react";
+import { X, Upload } from "lucide-react";
 import {
   updateCategory,
   type Category,
@@ -12,6 +12,7 @@ import {
 } from "@/lib/apis/categories";
 import { getAdminTokenFromCookies } from "@/lib/cookies";
 import { AxiosError } from "axios";
+import { getImageUrl } from "@/lib/utils/images";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required.").optional().or(z.literal("")),
@@ -20,6 +21,8 @@ const schema = z.object({
   parent_id: z.number().nullable().optional(),
   position: z.number().min(0).optional(),
   is_active: z.boolean().optional(),
+  is_featured: z.boolean().optional(),
+  status: z.enum(["active", "inactive"]).optional(),
   meta_title: z.string().optional().or(z.literal("")),
   meta_description: z.string().optional().or(z.literal("")),
 });
@@ -48,6 +51,10 @@ export function EditCategoryModal({
 }: Props) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(
+    category.image_url ? getImageUrl(category.image_url) : null
+  );
 
   // Filter out self and descendants to prevent circular references
   const availableParents = categories.filter(
@@ -68,10 +75,28 @@ export function EditCategoryModal({
       parent_id: category.parent_id,
       position: category.position,
       is_active: category.is_active,
+      is_featured: category.is_featured,
+      status: category.status || "active",
       meta_title: category.meta_title || "",
       meta_description: category.meta_description || "",
     },
   });
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedImage(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const removeImage = () => {
+    setSelectedImage(null);
+    if (imagePreview && imagePreview.startsWith("blob:")) {
+      URL.revokeObjectURL(imagePreview);
+    }
+    setImagePreview(null);
+  };
 
   const onSubmit = async (values: FormValues) => {
     setServerError(null);
@@ -85,29 +110,48 @@ export function EditCategoryModal({
       }
 
       const updateData: UpdateCategoryData = {};
-      if (values.name && values.name !== category.name) updateData.name = values.name;
+      if (values.name && values.name !== category.name)
+        updateData.name = values.name;
       if (values.slug !== undefined && values.slug !== category.slug)
         updateData.slug = values.slug || undefined;
       if (values.description !== category.description)
         updateData.description = values.description || undefined;
       if (values.parent_id !== category.parent_id)
         updateData.parent_id = values.parent_id ?? null;
-      if (values.position !== undefined && values.position !== category.position)
+      if (
+        values.position !== undefined &&
+        values.position !== category.position
+      )
         updateData.position = values.position;
-      if (values.is_active !== undefined && values.is_active !== category.is_active)
+      if (
+        values.is_active !== undefined &&
+        values.is_active !== category.is_active
+      )
         updateData.is_active = values.is_active;
+      if (
+        values.is_featured !== undefined &&
+        values.is_featured !== category.is_featured
+      )
+        updateData.is_featured = values.is_featured;
+      if (values.status !== undefined && values.status !== category.status)
+        updateData.status = values.status;
       if (values.meta_title !== category.meta_title)
         updateData.meta_title = values.meta_title || undefined;
       if (values.meta_description !== category.meta_description)
         updateData.meta_description = values.meta_description || undefined;
 
-      if (Object.keys(updateData).length === 0) {
+      if (Object.keys(updateData).length === 0 && !selectedImage) {
         setServerError("No changes to save");
         setIsSubmitting(false);
         return;
       }
 
-      await updateCategory(token, category.id, updateData);
+      await updateCategory(
+        token,
+        category.id,
+        updateData,
+        selectedImage || undefined
+      );
       onSuccess();
     } catch (error) {
       if (error instanceof AxiosError && error.response) {
@@ -164,12 +208,16 @@ export function EditCategoryModal({
                 className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
               />
               {errors.name && (
-                <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.name.message}
+                </p>
               )}
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium">Parent Category</label>
+              <label className="mb-1 block text-sm font-medium">
+                Parent Category
+              </label>
               <select
                 {...register("parent_id", { valueAsNumber: true })}
                 className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
@@ -184,7 +232,9 @@ export function EditCategoryModal({
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium">Description</label>
+              <label className="mb-1 block text-sm font-medium">
+                Description
+              </label>
               <textarea
                 {...register("description")}
                 rows={3}
@@ -192,15 +242,64 @@ export function EditCategoryModal({
               />
             </div>
 
+            <div>
+              <label className="mb-1 block text-sm font-medium">
+                Category Image
+              </label>
+              {imagePreview ? (
+                <div className="relative">
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="h-32 w-full rounded-md object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    className="absolute right-2 top-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed border-gray-300 px-4 py-6 hover:border-gray-400">
+                  <Upload className="h-8 w-8 text-gray-400" />
+                  <span className="mt-2 text-sm text-gray-600">
+                    Click to upload image
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+                </label>
+              )}
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium">Status</label>
+              <select
+                {...register("status")}
+                className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+              <p className="mt-1 text-xs text-gray-500">
+                Inactive categories won&apos;t be visible to clients
+              </p>
+            </div>
+
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
-                {...register("is_active")}
-                id="is_active_edit"
+                {...register("is_featured")}
+                id="is_featured_edit"
                 className="h-4 w-4 rounded border-gray-300 text-blue-600"
               />
-              <label htmlFor="is_active_edit" className="text-sm font-medium">
-                Active
+              <label htmlFor="is_featured_edit" className="text-sm font-medium">
+                Featured
               </label>
             </div>
           </div>
@@ -227,4 +326,3 @@ export function EditCategoryModal({
     </div>
   );
 }
-

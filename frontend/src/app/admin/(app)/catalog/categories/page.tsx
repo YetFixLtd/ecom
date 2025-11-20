@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Search, Pencil, Trash2, ChevronRight, ChevronDown } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Pencil,
+  Trash2,
+  ChevronRight,
+  ChevronDown,
+  Image as ImageIcon,
+} from "lucide-react";
 import {
   getCategories,
   type Category,
@@ -13,6 +21,7 @@ import { getAdminTokenFromCookies } from "@/lib/cookies";
 import { AxiosError } from "axios";
 import { CreateCategoryModal } from "@/components/admin/catalog/CreateCategoryModal";
 import { EditCategoryModal } from "@/components/admin/catalog/EditCategoryModal";
+import { getImageUrl } from "@/lib/utils/images";
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -22,8 +31,12 @@ export default function CategoriesPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
-  const [parentFilter, setParentFilter] = useState<number | null | "all">("all");
-  const [expandedCategories, setExpandedCategories] = useState<Set<number>>(new Set());
+  const [parentFilter, setParentFilter] = useState<number | null | "all">(
+    "all"
+  );
+  const [expandedCategories, setExpandedCategories] = useState<Set<number>>(
+    new Set()
+  );
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [parentCategoryId, setParentCategoryId] = useState<number | null>(null);
@@ -116,7 +129,7 @@ export default function CategoriesPage() {
     return (
       <div key={category.id}>
         <div
-          className="flex items-center gap-2 border-b px-4 py-3 hover:bg-gray-50"
+          className="flex items-center gap-3 border-b px-4 py-3 hover:bg-gray-50"
           style={{ paddingLeft: `${level * 24 + 16}px` }}
         >
           {hasChildren && (
@@ -132,10 +145,38 @@ export default function CategoriesPage() {
             </button>
           )}
           {!hasChildren && <div className="w-5" />}
+
+          {/* Category Image */}
+          {category.image_url ? (
+            <img
+              src={getImageUrl(category.image_url)}
+              alt={category.name}
+              className="h-10 w-10 rounded-md object-cover"
+            />
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-gray-100">
+              <ImageIcon className="h-5 w-5 text-gray-400" />
+            </div>
+          )}
+
           <div className="flex-1">
-            <div className="font-medium">{category.name}</div>
+            <div className="flex items-center gap-2">
+              <span className="font-medium">{category.name}</span>
+              {category.status === "inactive" && (
+                <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
+                  Inactive
+                </span>
+              )}
+              {category.is_featured && (
+                <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">
+                  Featured
+                </span>
+              )}
+            </div>
             <div className="text-xs text-gray-500">
-              {category.slug} {category.products_count !== undefined && `• ${category.products_count} products`}
+              {category.slug}{" "}
+              {category.products_count !== undefined &&
+                `• ${category.products_count} products`}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -218,12 +259,16 @@ export default function CategoriesPage() {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Filter by Parent</label>
+            <label className="mb-1 block text-sm font-medium">
+              Filter by Parent
+            </label>
             <select
               value={parentFilter === "all" ? "all" : parentFilter || ""}
               onChange={(e) => {
                 const value = e.target.value;
-                setParentFilter(value === "all" ? "all" : value === "" ? null : Number(value));
+                setParentFilter(
+                  value === "all" ? "all" : value === "" ? null : Number(value)
+                );
                 setCurrentPage(1);
               }}
               className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
@@ -258,7 +303,9 @@ export default function CategoriesPage() {
             No categories found
           </div>
         ) : (
-          <div>{rootCategories.map((category) => renderCategory(category))}</div>
+          <div>
+            {rootCategories.map((category) => renderCategory(category))}
+          </div>
         )}
       </div>
 
@@ -292,4 +339,3 @@ export default function CategoriesPage() {
     </div>
   );
 }
-

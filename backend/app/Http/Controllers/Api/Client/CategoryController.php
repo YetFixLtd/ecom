@@ -25,44 +25,53 @@ class CategoryController extends Controller
     {
         $query = Category::query();
 
+        // Only show active categories to clients
+        $query->where('status', 'active');
+
+        // Filter by featured if requested
+        if ($request->boolean('featured')) {
+            $query->where('is_featured', true);
+        }
+
         // If flat structure is requested, don't load relationships
         if ($request->boolean('flat')) {
             $categories = $query->orderBy('position')->get();
         } else {
             // Get root categories (no parent) and recursively load all children
             // Using dot notation to load nested children up to 10 levels deep
+            // Only load active children at each level
             $categories = $query->whereNull('parent_id')
                 ->orderBy('position')
                 ->with([
                     'children' => function ($q) {
-                        $q->orderBy('position');
+                        $q->where('status', 'active')->orderBy('position');
                     },
                     'children.children' => function ($q) {
-                        $q->orderBy('position');
+                        $q->where('status', 'active')->orderBy('position');
                     },
                     'children.children.children' => function ($q) {
-                        $q->orderBy('position');
+                        $q->where('status', 'active')->orderBy('position');
                     },
                     'children.children.children.children' => function ($q) {
-                        $q->orderBy('position');
+                        $q->where('status', 'active')->orderBy('position');
                     },
                     'children.children.children.children.children' => function ($q) {
-                        $q->orderBy('position');
+                        $q->where('status', 'active')->orderBy('position');
                     },
                     'children.children.children.children.children.children' => function ($q) {
-                        $q->orderBy('position');
+                        $q->where('status', 'active')->orderBy('position');
                     },
                     'children.children.children.children.children.children.children' => function ($q) {
-                        $q->orderBy('position');
+                        $q->where('status', 'active')->orderBy('position');
                     },
                     'children.children.children.children.children.children.children.children' => function ($q) {
-                        $q->orderBy('position');
+                        $q->where('status', 'active')->orderBy('position');
                     },
                     'children.children.children.children.children.children.children.children.children' => function ($q) {
-                        $q->orderBy('position');
+                        $q->where('status', 'active')->orderBy('position');
                     },
                     'children.children.children.children.children.children.children.children.children.children' => function ($q) {
-                        $q->orderBy('position');
+                        $q->where('status', 'active')->orderBy('position');
                     },
                 ])
                 ->get();

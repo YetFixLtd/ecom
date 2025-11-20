@@ -157,6 +157,10 @@ export interface Category {
   slug: string;
   path: string;
   parent_id: number | null;
+  image_url: string | null;
+  image_path: string | null;
+  is_featured: boolean;
+  status: "active" | "inactive";
   parent?: Category;
   children?: Category[];
   products_count?: number;
@@ -359,4 +363,3 @@ export interface CreateAddressRequest {
 }
 
 export interface UpdateAddressRequest extends Partial<CreateAddressRequest> {}
-

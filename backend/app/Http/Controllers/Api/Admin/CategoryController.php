@@ -23,6 +23,11 @@ class CategoryController extends Controller
     {
         $query = Category::query();
 
+        // Filter by status (optional filter for admins)
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+
         // Filter by parent
         if ($request->has('parent_id')) {
             $query->where('parent_id', $request->parent_id);
@@ -78,6 +83,16 @@ class CategoryController extends Controller
             $data['slug'] = Str::slug($data['name']);
         }
 
+        // Handle image upload if present
+        if ($request->hasFile('image')) {
+            $file = $request->file('image');
+            $filename = time() . '_' . Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs('categories', $filename, 'public');
+
+            $data['image_path'] = $path;
+            $data['image_url'] = '/storage/' . $path;
+        }
+
         $category = Category::create($data);
 
         return (new CategoryResource($category))
@@ -125,6 +140,21 @@ class CategoryController extends Controller
             $data['slug'] = Str::slug($data['name']);
         }
 
+        // Handle image upload if present
+        if ($request->hasFile('image')) {
+            // Delete old image if exists
+            if ($category->image_path && \Storage::disk('public')->exists($category->image_path)) {
+                \Storage::disk('public')->delete($category->image_path);
+            }
+
+            $file = $request->file('image');
+            $filename = time() . '_' . Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs('categories', $filename, 'public');
+
+            $data['image_path'] = $path;
+            $data['image_url'] = '/storage/' . $path;
+        }
+
         $category->update($data);
 
         return (new CategoryResource($category->fresh()))->response();
@@ -145,6 +175,11 @@ class CategoryController extends Controller
             return response()->json([
                 'message' => 'Cannot delete category with child categories. Please delete or reassign child categories first.',
             ], 409);
+        }
+
+        // Delete image if exists
+        if ($category->image_path && \Storage::disk('public')->exists($category->image_path)) {
+            \Storage::disk('public')->delete($category->image_path);
         }
 
         $category->delete();

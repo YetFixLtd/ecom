@@ -26,7 +26,11 @@ export interface Category {
   description: string | null;
   parent_id: number | null;
   position: number;
+  image_url: string | null;
+  image_path: string | null;
   is_active: boolean;
+  is_featured: boolean;
+  status: "active" | "inactive";
   meta_title: string | null;
   meta_description: string | null;
   created_at: string;
@@ -64,6 +68,8 @@ export interface CreateCategoryData {
   parent_id?: number | null;
   position?: number;
   is_active?: boolean;
+  is_featured?: boolean;
+  status?: "active" | "inactive";
   meta_title?: string;
   meta_description?: string;
 }
@@ -75,6 +81,8 @@ export interface UpdateCategoryData {
   parent_id?: number | null;
   position?: number;
   is_active?: boolean;
+  is_featured?: boolean;
+  status?: "active" | "inactive";
   meta_title?: string;
   meta_description?: string;
 }
@@ -120,10 +128,33 @@ export async function getCategory(
  */
 export async function createCategory(
   token: string,
-  data: CreateCategoryData
+  data: CreateCategoryData,
+  image?: File
 ): Promise<{ data: Category }> {
-  const response = await api.post("/admin/categories", data, {
-    headers: getAuthHeaders(token),
+  const formData = new FormData();
+
+  // Append all data fields
+  Object.entries(data).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      // Convert boolean values to '1' or '0' for Laravel
+      if (typeof value === "boolean") {
+        formData.append(key, value ? "1" : "0");
+      } else {
+        formData.append(key, String(value));
+      }
+    }
+  });
+
+  // Append image if provided
+  if (image) {
+    formData.append("image", image);
+  }
+
+  const response = await api.post("/admin/categories", formData, {
+    headers: {
+      ...getAuthHeaders(token),
+      "Content-Type": "multipart/form-data",
+    },
   });
   return response.data;
 }
@@ -135,11 +166,38 @@ export async function createCategory(
 export async function updateCategory(
   token: string,
   id: number,
-  data: UpdateCategoryData
+  data: UpdateCategoryData,
+  image?: File
 ): Promise<{ data: Category }> {
-  const response = await api.put(`/admin/categories/${id}`, data, {
-    headers: getAuthHeaders(token),
+  const formData = new FormData();
+
+  // Append all data fields
+  Object.entries(data).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      // Convert boolean values to '1' or '0' for Laravel
+      if (typeof value === "boolean") {
+        formData.append(key, value ? "1" : "0");
+      } else {
+        formData.append(key, String(value));
+      }
+    }
   });
+
+  // Append image if provided
+  if (image) {
+    formData.append("image", image);
+  }
+
+  const response = await api.post(
+    `/admin/categories/${id}?_method=PUT`,
+    formData,
+    {
+      headers: {
+        ...getAuthHeaders(token),
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
   return response.data;
 }
 
@@ -157,4 +215,3 @@ export async function deleteCategory(
   });
   return response.data;
 }
-

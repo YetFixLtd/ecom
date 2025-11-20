@@ -25,6 +25,10 @@ class CategoryResource extends JsonResource
             'slug' => $this->slug,
             'path' => $this->path,
             'parent_id' => $this->parent_id,
+            'image_url' => $this->image_url,
+            'image_path' => $this->image_path,
+            'is_featured' => $this->is_featured,
+            'status' => $this->status,
             'parent' => $this->whenLoaded('parent', function () {
                 return new CategoryResource($this->parent);
             }),
