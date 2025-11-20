@@ -24,6 +24,8 @@ use App\Http\Controllers\Api\Client\CategoryController as ClientCategoryControll
 use App\Http\Controllers\Api\Client\BrandController as ClientBrandController;
 use App\Http\Controllers\Api\Client\CartController;
 use App\Http\Controllers\Api\Client\OrderController as ClientOrderController;
+use App\Http\Controllers\Api\Client\SettingController as ClientSettingController;
+use App\Http\Controllers\Api\Admin\SettingController as AdminSettingController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -73,6 +75,9 @@ Route::prefix('v1')->group(function () {
     // Brands
     Route::get('/brands', [ClientBrandController::class, 'index'])->name('api.brands.index');
     Route::get('/brands/{id}', [ClientBrandController::class, 'show'])->name('api.brands.show');
+
+    // Settings (public)
+    Route::get('/settings', [ClientSettingController::class, 'index'])->name('api.settings.index');
 
     // ========================================
     // Client Protected Routes
@@ -255,6 +260,10 @@ Route::prefix('v1')->group(function () {
             Route::get('/fulfillments/{id}', [FulfillmentController::class, 'show'])->name('api.admin.fulfillments.show');
             Route::patch('/fulfillments/{id}', [FulfillmentController::class, 'update'])->name('api.admin.fulfillments.update');
             Route::patch('/fulfillments/{id}/status', [FulfillmentController::class, 'updateStatus'])->name('api.admin.fulfillments.update-status');
+
+            // Settings
+            Route::get('/settings', [AdminSettingController::class, 'index'])->name('api.admin.settings.index');
+            Route::post('/settings', [AdminSettingController::class, 'update'])->name('api.admin.settings.update');
         });
     });
 });

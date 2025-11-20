@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import { getUserTokenFromCookies } from "@/lib/cookies";
 import { getCart } from "@/lib/apis/client/cart";
 import { getCategories } from "@/lib/apis/client/categories";
+import { getPublicSettings } from "@/lib/apis/settings";
 import { logout } from "@/lib/apis/auth";
+import { getImageUrl } from "@/lib/utils/images";
 import type { Category } from "@/types/client";
 
 export default function Header() {
@@ -19,6 +21,8 @@ export default function Header() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [siteName, setSiteName] = useState("E-Commerce");
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   async function loadCategories() {
@@ -27,6 +31,18 @@ export default function Header() {
       setCategories(response.data);
     } catch (error) {
       console.error("Error loading categories:", error);
+    }
+  }
+
+  async function loadSettings() {
+    try {
+      const response = await getPublicSettings();
+      setSiteName(response.data.site_name || "E-Commerce");
+      if (response.data.site_logo_url) {
+        setLogoUrl(getImageUrl(response.data.site_logo_url));
+      }
+    } catch (error) {
+      console.error("Error loading settings:", error);
     }
   }
 
@@ -77,6 +93,7 @@ export default function Header() {
     }
     loadCart();
     loadCategories();
+    loadSettings();
     
     // Listen for storage changes to update cart count when guest cart changes
     if (typeof window !== "undefined") {
@@ -139,12 +156,19 @@ export default function Header() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4 py-3 sm:py-0 sm:h-20">
           {/* Logo */}
           <div className="flex items-center shrink-0 w-full sm:w-auto justify-between sm:justify-start">
-            <Link
-              href="/"
-              className="text-2xl sm:text-3xl font-bold text-black"
-            >
-              Ecom
-              <span className="text-[#FFC107]">.</span>
+            <Link href="/" className="flex items-center">
+              {logoUrl ? (
+                <img
+                  src={logoUrl}
+                  alt={siteName}
+                  className="h-10 sm:h-12 object-contain"
+                />
+              ) : (
+                <span className="text-2xl sm:text-3xl font-bold text-black">
+                  {siteName}
+                  <span className="text-[#FFC107]">.</span>
+                </span>
+              )}
             </Link>
             {/* Mobile Cart and Auth - shown on small screens */}
             <div className="flex items-center gap-2 sm:hidden">

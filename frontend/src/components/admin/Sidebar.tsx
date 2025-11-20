@@ -20,6 +20,7 @@ import {
   Activity,
   Truck,
   ShoppingCart,
+  Settings,
 } from "lucide-react";
 
 const navItems = [
@@ -106,6 +107,12 @@ const navItems = [
     href: "/admin/manage",
     label: "Manage Admins",
     Icon: Shield,
+    disabled: false,
+  },
+  {
+    href: "/admin/settings",
+    label: "Settings",
+    Icon: Settings,
     disabled: false,
   },
 ];
