@@ -57,10 +57,13 @@ export interface FulfillmentItem {
   order_item?: OrderItem;
 }
 
+export type OrderStatus = "pending" | "paid" | "fulfilled" | "canceled" | "refunded";
+export type FulfillmentStatus = "pending" | "packed" | "shipped" | "delivered" | "canceled" | "returned";
+
 export interface Fulfillment {
   id: number;
   order_id: number;
-  status: "pending" | "packed" | "shipped" | "delivered" | "canceled" | "returned";
+  status: FulfillmentStatus;
   tracking_number: string | null;
   carrier: string | null;
   shipped_at: string | null;
@@ -95,7 +98,7 @@ export interface Fulfillment {
 export interface Order {
   id: number;
   order_number: string;
-  status: "pending" | "paid" | "fulfilled" | "canceled" | "refunded";
+  status: OrderStatus;
   currency: string;
   subtotal: number;
   discount_total: number;
@@ -156,7 +159,7 @@ export interface Order {
 export interface OrderListParams {
   page?: number;
   per_page?: number;
-  status?: "pending" | "paid" | "fulfilled" | "canceled" | "refunded";
+  status?: OrderStatus;
   search?: string;
   date_from?: string;
   date_to?: string;
@@ -189,7 +192,7 @@ export interface UpdateFulfillmentData {
 }
 
 export interface UpdateFulfillmentStatusData {
-  status: "pending" | "packed" | "shipped" | "delivered" | "canceled" | "returned";
+  status: FulfillmentStatus;
 }
 
 export interface UpdateOrderStatusData {

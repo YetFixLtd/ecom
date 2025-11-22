@@ -112,6 +112,7 @@ export default function ProductDetailPage() {
         router.push("/cart");
       } else {
         // Guest user - use localStorage
+        if (!product) return;
         const { addToGuestCart } = await import("@/lib/utils/guestCart");
         addToGuestCart(
           selectedVariant.id,
@@ -177,6 +178,7 @@ export default function ProductDetailPage() {
         router.push("/cart");
       } else {
         // Guest user - use localStorage
+        if (!product) return;
         const { addToGuestCart } = await import("@/lib/utils/guestCart");
         addToGuestCart(
           selectedVariant.id,

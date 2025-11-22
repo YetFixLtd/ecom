@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Header from "@/components/client/Header";
 import Footer from "@/components/client/Footer";
@@ -10,7 +10,7 @@ import { getCategories } from "@/lib/apis/client/categories";
 import { getBrands } from "@/lib/apis/client/brands";
 import type { ClientProduct, Category, Brand } from "@/types/client";
 
-export default function ProductsPage() {
+function ProductsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [products, setProducts] = useState<ClientProduct[]>([]);
@@ -292,5 +292,19 @@ export default function ProductsPage() {
       </main>
       <Footer />
     </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-gray-600">Loading products...</div>
+        </div>
+      }
+    >
+      <ProductsContent />
+    </Suspense>
   );
 }

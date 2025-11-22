@@ -66,7 +66,7 @@ export interface ProductVariant {
   price: number;
   compare_at_price: number | null;
   currency: string;
-  status: string;
+  status?: string;
   inventory?: ProductVariantInventory[];
   attributes?: ProductVariantAttribute[];
 }
