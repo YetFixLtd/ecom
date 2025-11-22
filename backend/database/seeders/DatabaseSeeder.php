@@ -21,7 +21,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             AdministratorSeeder::class,
             ShippingMethodSeeder::class,
-            ProductSeeder::class,
+            // ProductSeeder::class,
         ]);
 
         // User::factory(10)->create();
