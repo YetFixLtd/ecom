@@ -148,7 +148,6 @@ function CategorySubmenuItem({
 }
 
 export default function TopNavigation() {
-  const [showSuperDealsDropdown, setShowSuperDealsDropdown] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [expandedCategories, setExpandedCategories] = useState<Set<number>>(
     new Set()
@@ -371,76 +370,6 @@ export default function TopNavigation() {
                 </div>
               </div>
           </div>
-
-          <div className="relative">
-            <button
-              onMouseEnter={() => setShowSuperDealsDropdown(true)}
-              onMouseLeave={() => setShowSuperDealsDropdown(false)}
-              className="flex items-center text-sm font-medium text-black hover:text-[#FFC107] transition-colors"
-            >
-              Super Deals
-              <svg
-                className="ml-1 w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
-            </button>
-            {showSuperDealsDropdown && (
-              <div
-                onMouseEnter={() => setShowSuperDealsDropdown(true)}
-                onMouseLeave={() => setShowSuperDealsDropdown(false)}
-                className="absolute top-full left-0 mt-1 w-48 bg-white border border-[#E5E5E5] rounded-md shadow-lg z-50"
-              >
-                <Link
-                  href="/products?featured=true"
-                  className="block px-4 py-2 text-sm text-black hover:bg-[#F5F5F5] transition-colors"
-                >
-                  Featured Products
-                </Link>
-                <Link
-                  href="/products?sort=price&order=asc"
-                  className="block px-4 py-2 text-sm text-black hover:bg-[#F5F5F5] transition-colors"
-                >
-                  Best Prices
-                </Link>
-                <Link
-                  href="/products?sort=created_at&order=desc"
-                  className="block px-4 py-2 text-sm text-black hover:bg-[#F5F5F5] transition-colors"
-                >
-                  New Arrivals
-                </Link>
-              </div>
-            )}
-          </div>
-
-          <Link
-            href="/brands"
-            className="text-sm font-medium text-black hover:text-[#FFC107] transition-colors"
-          >
-            Featured Brands
-          </Link>
-
-          <Link
-            href="/products?featured=true"
-            className="text-sm font-medium text-black hover:text-[#FFC107] transition-colors"
-          >
-            Trending Styles
-          </Link>
-
-          <Link
-            href="/gift-cards"
-            className="text-sm font-medium text-black hover:text-[#FFC107] transition-colors"
-          >
-            Gift Cards
-          </Link>
         </div>
       </div>
     </nav>
