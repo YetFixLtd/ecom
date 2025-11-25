@@ -53,6 +53,7 @@ export default function PromotionalDeals() {
   }
 
   if (categories.length === 0) {
+    
     return null;
   }
 

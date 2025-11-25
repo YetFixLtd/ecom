@@ -5,16 +5,37 @@ import Image from "next/image";
 import Link from "next/link";
 import { getImageUrl } from "@/lib/utils/images";
 import type { ClientProduct } from "@/types/client";
+import { getProducts } from "@/lib/apis/client/products";
 
 interface HeroCarouselProps {
   products: ClientProduct[];
 }
 
-export default function HeroCarousel({ products }: HeroCarouselProps) {
+async function getFeaturedProducts(): Promise<ClientProduct[]> {
+  try {
+    const response = await getProducts({ featured: true, per_page: 5 });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching featured products:", error);
+    return [];
+  }
+}
+export default function HeroCarousel() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [isTransitioning, setIsTransitioning] = useState(false);
-
+  const [products, setProducts] = useState<ClientProduct[]>([]);
+  useEffect(() => {
+    const fetchFeaturedProducts = async () => {
+      try {
+        const featuredProducts = await getFeaturedProducts();
+        setProducts(featuredProducts);
+      } catch (error) {
+        console.error("Error fetching featured products:", error);
+      }
+    };
+    fetchFeaturedProducts();
+  }, []);
   // Auto-rotate every 5 seconds
   useEffect(() => {
     if (!isAutoPlaying || products.length <= 1) return;
