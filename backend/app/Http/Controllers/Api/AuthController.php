@@ -83,7 +83,7 @@ class AuthController extends Controller
         }
 
         // Revoke all existing tokens (optional - for security)
-        $user->tokens()->delete();
+        // $user->tokens()->delete();
 
         // Generate new token
         $token = $user->createToken('auth-token')->plainTextToken;
