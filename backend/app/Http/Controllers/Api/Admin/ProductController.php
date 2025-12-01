@@ -193,6 +193,26 @@ class ProductController extends Controller
                             ]);
                         }
                     }
+                    // If no inventory data was provided but the variant tracks stock,
+                    // ensure at least one InventoryItem row exists (with zero on_hand)
+                    // so the SKU is available for future stock adjustments.
+                    elseif (empty($inventoryData) && $variant->track_stock) {
+                        // Use the default warehouse if configured; otherwise fall back
+                        // to the first available warehouse.
+                        $defaultWarehouse = \App\Models\Inventory\Warehouse::where('is_default', true)->first()
+                            ?? \App\Models\Inventory\Warehouse::first();
+
+                        if ($defaultWarehouse) {
+                            \App\Models\Inventory\InventoryItem::create([
+                                'variant_id' => $variant->id,
+                                'warehouse_id' => $defaultWarehouse->id,
+                                'on_hand' => 0,
+                                'reserved' => 0,
+                                'safety_stock' => 0,
+                                'reorder_point' => 0,
+                            ]);
+                        }
+                    }
                 }
             }
 
