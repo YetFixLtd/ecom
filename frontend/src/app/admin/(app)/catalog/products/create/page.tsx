@@ -18,6 +18,7 @@ import {
   createProduct,
   type CreateProductData,
   type CreateProductVariantData,
+  type VariantInventoryData,
 } from "@/lib/apis/products";
 import { getBrands, type Brand } from "@/lib/apis/brands";
 import { getCategories, type Category } from "@/lib/apis/categories";
@@ -74,6 +75,10 @@ export default function CreateProductPage() {
     compare_at_price: null as number | null,
     cost_price: null as number | null,
   });
+  // Simple product inventory state (per warehouse)
+  const [simpleInventory, setSimpleInventory] = useState<
+    VariantInventoryData[]
+  >([]);
 
   const {
     register,
@@ -256,6 +261,26 @@ export default function CreateProductPage() {
     }
   };
 
+  // Update inventory for simple products (per warehouse)
+  const updateSimpleInventory = (
+    warehouseId: number,
+    updates: { on_hand?: number; safety_stock?: number; reorder_point?: number }
+  ) => {
+    setSimpleInventory((prev) => {
+      const existingIndex = prev.findIndex(
+        (inv) => inv.warehouse_id === warehouseId
+      );
+      let updated: VariantInventoryData[];
+      if (existingIndex >= 0) {
+        updated = [...prev];
+        updated[existingIndex] = { ...updated[existingIndex], ...updates };
+      } else {
+        updated = [...prev, { warehouse_id: warehouseId, ...updates }];
+      }
+      return updated;
+    });
+  };
+
   const onSubmit = async (values: FormValues) => {
     setServerError(null);
     setIsSubmitting(true);
@@ -325,9 +350,7 @@ export default function CreateProductPage() {
 
         // Check if any variants were filtered out
         if (validVariants.length === 0) {
-          setServerError(
-            "All variants must have SKU and price."
-          );
+          setServerError("All variants must have SKU and price.");
           setIsSubmitting(false);
           return;
         }
@@ -357,6 +380,16 @@ export default function CreateProductPage() {
           setIsSubmitting(false);
           return;
         }
+        // Clean up simple inventory (only send warehouses where at least one field is set)
+        const cleanedInventory =
+          simpleInventory.length > 0
+            ? simpleInventory.filter(
+                (inv) =>
+                  inv.on_hand !== undefined ||
+                  inv.safety_stock !== undefined ||
+                  inv.reorder_point !== undefined
+              )
+            : undefined;
         validVariants = [
           {
             sku: simpleProductPricing.sku.trim(),
@@ -367,7 +400,7 @@ export default function CreateProductPage() {
             allow_backorder: false,
             status: "active",
             attribute_values: [], // Simple products don't have attribute values
-            inventory: [],
+            inventory: cleanedInventory,
           },
         ];
       }
@@ -761,6 +794,73 @@ export default function CreateProductPage() {
                       />
                     </div>
                   </div>
+                  {/* Simple product inventory by warehouse */}
+                  {warehouses.length > 0 && (
+                    <div className="mt-4 rounded-md border p-3">
+                      <label className="mb-2 block text-sm font-medium">
+                        Initial Inventory by Warehouse
+                      </label>
+                      <div className="space-y-2">
+                        {warehouses.map((warehouse) => {
+                          const inv =
+                            simpleInventory.find(
+                              (i) => i.warehouse_id === warehouse.id
+                            ) || ({} as VariantInventoryData);
+                          return (
+                            <div
+                              key={warehouse.id}
+                              className="grid grid-cols-3 gap-2"
+                            >
+                              <div className="text-xs text-gray-600">
+                                {warehouse.name}
+                              </div>
+                              <input
+                                type="number"
+                                placeholder="On Hand"
+                                value={inv.on_hand ?? ""}
+                                onChange={(e) =>
+                                  updateSimpleInventory(warehouse.id, {
+                                    on_hand: e.target.value
+                                      ? Number(e.target.value)
+                                      : undefined,
+                                  })
+                                }
+                                className="rounded-md border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-600"
+                              />
+                              <div className="flex gap-1">
+                                <input
+                                  type="number"
+                                  placeholder="Safety"
+                                  value={inv.safety_stock ?? ""}
+                                  onChange={(e) =>
+                                    updateSimpleInventory(warehouse.id, {
+                                      safety_stock: e.target.value
+                                        ? Number(e.target.value)
+                                        : undefined,
+                                    })
+                                  }
+                                  className="flex-1 rounded-md border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-600"
+                                />
+                                <input
+                                  type="number"
+                                  placeholder="Reorder"
+                                  value={inv.reorder_point ?? ""}
+                                  onChange={(e) =>
+                                    updateSimpleInventory(warehouse.id, {
+                                      reorder_point: e.target.value
+                                        ? Number(e.target.value)
+                                        : undefined,
+                                    })
+                                  }
+                                  className="flex-1 rounded-md border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-600"
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
