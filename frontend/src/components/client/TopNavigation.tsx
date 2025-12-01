@@ -124,13 +124,15 @@ function CategorySubmenuItem({
   category,
   level = 0,
   expandedCategories,
-  toggleCategory,
+  openCategory,
+  closeCategory,
   categoryRefs,
 }: {
   category: Category;
   level?: number;
   expandedCategories: Set<number>;
-  toggleCategory: (id: number) => void;
+  openCategory: (id: number) => void;
+  closeCategory: (id: number) => void;
   categoryRefs: React.MutableRefObject<Map<number, HTMLDivElement>>;
 }) {
   const hasChildren = category.children && category.children.length > 0;
@@ -174,6 +176,12 @@ function CategorySubmenuItem({
     }
   }, [isExpanded, hasChildren, category.id, categoryRefs]);
 
+  const handleMouseEnter = () => {
+    if (hasChildren) {
+      openCategory(category.id);
+    }
+  };
+
   return (
     <>
       <div
@@ -182,6 +190,7 @@ function CategorySubmenuItem({
           else categoryRefs.current.delete(category.id);
         }}
         className="relative"
+        onMouseEnter={handleMouseEnter}
       >
         <div className="flex items-center justify-between">
           <Link
@@ -193,16 +202,11 @@ function CategorySubmenuItem({
             {category.name}
           </Link>
           {hasChildren && (
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                toggleCategory(category.id);
-              }}
-              className={`px-3 py-2 text-gray-600 hover:text-[#FFC107] transition-colors ${
+            <div
+              className={`px-3 py-2 text-gray-600 ${
                 isExpanded ? "text-[#FFC107]" : ""
               }`}
-              aria-label={isExpanded ? "Collapse" : "Expand"}
+              aria-label={isExpanded ? "Expanded" : "Collapsed"}
             >
               <svg
                 className={`w-4 h-4 transition-transform ${
@@ -219,7 +223,7 @@ function CategorySubmenuItem({
                   d="M9 5l7 7-7 7"
                 />
               </svg>
-            </button>
+            </div>
           )}
         </div>
       </div>
@@ -238,6 +242,8 @@ function CategorySubmenuItem({
               maxWidth: "calc(100vw - 16px)",
             }}
             onClick={(e) => e.stopPropagation()}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={() => closeCategory(category.id)}
           >
             <div className="py-2">
               <div className="px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
@@ -249,7 +255,8 @@ function CategorySubmenuItem({
                   category={child}
                   level={level + 1}
                   expandedCategories={expandedCategories}
-                  toggleCategory={toggleCategory}
+                  openCategory={openCategory}
+                  closeCategory={closeCategory}
                   categoryRefs={categoryRefs}
                 />
               ))}
@@ -267,9 +274,9 @@ export default function TopNavigation() {
   );
   const [loading, setLoading] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [showDesktopDropdown, setShowDesktopDropdown] = useState(true); // Always open on desktop
   const departmentsRef = useRef<HTMLDivElement>(null);
   const categoryRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   function toggleCategory(categoryId: number) {
     setExpandedCategories((prev) => {
@@ -290,25 +297,57 @@ export default function TopNavigation() {
     });
   }
 
-  useEffect(() => {
-    loadCategories();
-  }, []);
+  // Open any (nested) category without closing others
+  function openCategory(categoryId: number) {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setExpandedCategories((prev) => {
+      const newSet = new Set(prev);
+      newSet.add(categoryId);
+      return newSet;
+    });
+  }
 
-  // Keep dropdown open on desktop, close on mobile
-  useEffect(() => {
-    function handleResize() {
-      if (typeof window !== "undefined") {
-        if (window.innerWidth >= 1024) {
-          setShowDesktopDropdown(true);
-        } else {
-          setShowDesktopDropdown(false);
-        }
-      }
+  // Open a ROOT category (in the main left list) and close other roots
+  function openRootCategory(categoryId: number) {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
     }
 
-    handleResize(); // Set initial state
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    setExpandedCategories(() => {
+      const newSet = new Set<number>();
+      // Keep already-open nested categories that belong to this root will
+      // be re-opened as the user hovers; we only ensure a single root open.
+      newSet.add(categoryId);
+      return newSet;
+    });
+  }
+
+  function closeCategory(categoryId: number) {
+    // Add a small delay before closing to prevent flickering
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    hoverTimeoutRef.current = setTimeout(() => {
+      setExpandedCategories((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(categoryId);
+        return newSet;
+      });
+    }, 300);
+  }
+
+  useEffect(() => {
+    loadCategories();
+    // Cleanup timeout on unmount
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+    };
   }, []);
 
   // Close expanded categories when clicking outside (but keep menu visible on desktop)
@@ -324,9 +363,10 @@ export default function TopNavigation() {
         !departmentsRef.current.contains(event.target as Node)
       ) {
         setExpandedCategories(new Set());
-        // Only close dropdown on mobile, keep it open on desktop
-        if (typeof window !== "undefined" && window.innerWidth < 1024) {
-          setShowDesktopDropdown(false);
+        // Clear any pending hover timeouts
+        if (hoverTimeoutRef.current) {
+          clearTimeout(hoverTimeoutRef.current);
+          hoverTimeoutRef.current = null;
         }
       }
     }
@@ -453,6 +493,16 @@ export default function TopNavigation() {
                             else categoryRefs.current.delete(category.id);
                           }}
                           className="relative border-b border-gray-100"
+                          onMouseEnter={() => {
+                            if (hasChildren) {
+                              openRootCategory(category.id);
+                            }
+                          }}
+                          onMouseLeave={() => {
+                            if (hasChildren) {
+                              closeCategory(category.id);
+                            }
+                          }}
                         >
                           <div className="flex items-center justify-between">
                             <Link
@@ -462,16 +512,13 @@ export default function TopNavigation() {
                               {category.name}
                             </Link>
                             {hasChildren && (
-                              <button
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  toggleCategory(category.id);
-                                }}
-                                className={`px-4 py-3 text-gray-600 hover:text-[#FFC107] transition-colors ${
+                              <div
+                                className={`px-4 py-3 text-gray-600 ${
                                   isExpanded ? "text-[#FFC107]" : ""
                                 }`}
-                                aria-label={isExpanded ? "Collapse" : "Expand"}
+                                aria-label={
+                                  isExpanded ? "Expanded" : "Collapsed"
+                                }
                               >
                                 <svg
                                   className={`w-4 h-4 transition-transform ${
@@ -488,7 +535,7 @@ export default function TopNavigation() {
                                     d="M9 5l7 7-7 7"
                                   />
                                 </svg>
-                              </button>
+                              </div>
                             )}
                           </div>
 
@@ -525,6 +572,12 @@ export default function TopNavigation() {
                                         maxWidth: "calc(100vw - 16px)",
                                       }}
                                       onClick={(e) => e.stopPropagation()}
+                                      onMouseEnter={() => {
+                                        openCategory(category.id);
+                                      }}
+                                      onMouseLeave={() => {
+                                        closeCategory(category.id);
+                                      }}
                                     >
                                       <div className="py-2">
                                         <div className="px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
@@ -538,7 +591,8 @@ export default function TopNavigation() {
                                             expandedCategories={
                                               expandedCategories
                                             }
-                                            toggleCategory={toggleCategory}
+                                            openCategory={openCategory}
+                                            closeCategory={closeCategory}
                                             categoryRefs={categoryRefs}
                                           />
                                         ))}
