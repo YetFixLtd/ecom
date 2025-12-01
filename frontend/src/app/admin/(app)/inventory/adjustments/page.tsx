@@ -64,25 +64,31 @@ export default function AdjustmentsPage() {
         const warehousesRes = await getWarehouses({ size: 100 });
         setWarehouses(warehousesRes.data);
 
-        // Fetch all products first
+        // Fetch all products first (simple + variant) so we can adjust stock
+        // for SKUs belonging to both simple and variant products.
         const productsRes = await getProducts(token, { size: 1000 });
-        
-        // Filter to only variant-type products and fetch their details with variants
-        const variantProducts = productsRes.data.filter(
-          (p) => p.product_type === "variant"
+
+        // Filter to products that actually have variants in the system.
+        // For simple products, the backend still creates a single variant record.
+        const productsForVariants = productsRes.data.filter((p) =>
+          ["simple", "variant"].includes(p.product_type)
         );
-        
-        // Fetch details for variant products to get their variants
+
+        // Fetch details for these products to get their variants
         const { getProduct } = await import("@/lib/apis/products");
         const productsWithVariantsData = await Promise.all(
-          variantProducts.map(async (product) => {
+          productsForVariants.map(async (product) => {
             try {
               const detail = await getProduct(token, product.id, {
                 with_variants: true,
+                with_inventory: true,
               });
               return detail.data;
             } catch (err) {
-              console.error(`Failed to fetch variants for product ${product.id}:`, err);
+              console.error(
+                `Failed to fetch variants for product ${product.id}:`,
+                err
+              );
               return product; // Return product without variants if fetch fails
             }
           })
@@ -226,12 +232,14 @@ export default function AdjustmentsPage() {
               type="number"
               {...register("qty", { valueAsNumber: true })}
               className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
-              placeholder={adjustmentMode === "SET_ON_HAND" ? "Target quantity" : "Change amount"}
+              placeholder={
+                adjustmentMode === "SET_ON_HAND"
+                  ? "Target quantity"
+                  : "Change amount"
+              }
             />
             {errors.qty && (
-              <p className="mt-1 text-xs text-red-600">
-                {errors.qty.message}
-              </p>
+              <p className="mt-1 text-xs text-red-600">{errors.qty.message}</p>
             )}
           </div>
         </div>
@@ -291,4 +299,3 @@ export default function AdjustmentsPage() {
     </div>
   );
 }
-

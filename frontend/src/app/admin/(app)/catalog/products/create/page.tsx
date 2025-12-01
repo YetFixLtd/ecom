@@ -389,7 +389,17 @@ export default function CreateProductPage() {
                   inv.safety_stock !== undefined ||
                   inv.reorder_point !== undefined
               )
-            : undefined;
+            : [];
+
+        // If user didn't provide any inventory values, still create zeroed
+        // inventory rows so that the SKU appears in stock adjustments.
+        const inventoryForSimple: VariantInventoryData[] =
+          cleanedInventory.length > 0
+            ? cleanedInventory
+            : warehouses.map((w) => ({
+                warehouse_id: w.id,
+                on_hand: 0,
+              }));
         validVariants = [
           {
             sku: simpleProductPricing.sku.trim(),
@@ -400,7 +410,7 @@ export default function CreateProductPage() {
             allow_backorder: false,
             status: "active",
             attribute_values: [], // Simple products don't have attribute values
-            inventory: cleanedInventory,
+            inventory: inventoryForSimple,
           },
         ];
       }

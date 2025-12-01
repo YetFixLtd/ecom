@@ -23,6 +23,7 @@ import {
   type Product,
   type ProductVariant,
   type ProductVariantAttributeValue,
+  type VariantInventoryData,
 } from "@/lib/apis/products";
 import { getBrands, type Brand } from "@/lib/apis/brands";
 import { getCategories, type Category } from "@/lib/apis/categories";
@@ -107,6 +108,47 @@ export default function EditProductPage() {
   const [expandedCategories, setExpandedCategories] = useState<Set<number>>(
     new Set()
   );
+
+  // Update inventory for NEW variants (those without an id) per warehouse
+  const updateVariantInventory = (
+    variantIndex: number,
+    warehouseId: number,
+    updates: {
+      on_hand?: number;
+      safety_stock?: number;
+      reorder_point?: number;
+    }
+  ) => {
+    setVariants((prev) => {
+      const updated = [...prev];
+      const variant = updated[variantIndex];
+      const currentInventory = (variant.inventory ||
+        []) as VariantInventoryData[];
+      const existingIndex = currentInventory.findIndex(
+        (inv) => inv.warehouse_id === warehouseId
+      );
+
+      let newInventory: VariantInventoryData[];
+      if (existingIndex >= 0) {
+        newInventory = [...currentInventory];
+        newInventory[existingIndex] = {
+          ...newInventory[existingIndex],
+          ...updates,
+        };
+      } else {
+        newInventory = [
+          ...currentInventory,
+          { warehouse_id: warehouseId, ...updates },
+        ];
+      }
+
+      updated[variantIndex] = {
+        ...variant,
+        inventory: newInventory,
+      };
+      return updated;
+    });
+  };
 
   const {
     register,
@@ -1150,6 +1192,95 @@ export default function EditProductPage() {
                                   </span>
                                 </label>
                               </div>
+
+                              {/* Initial inventory by warehouse - only for NEW variants */}
+                              {!variant.id &&
+                                (variant.track_stock ?? true) &&
+                                warehouses.length > 0 && (
+                                  <div className="mt-3 rounded-md border p-3">
+                                    <label className="mb-2 block text-sm font-medium">
+                                      Initial Inventory by Warehouse
+                                    </label>
+                                    <div className="space-y-2">
+                                      {warehouses.map((warehouse) => {
+                                        const inv =
+                                          (
+                                            variant.inventory as
+                                              | VariantInventoryData[]
+                                              | undefined
+                                          )?.find(
+                                            (i) =>
+                                              i.warehouse_id === warehouse.id
+                                          ) || ({} as VariantInventoryData);
+                                        return (
+                                          <div
+                                            key={warehouse.id}
+                                            className="grid grid-cols-3 gap-2"
+                                          >
+                                            <div className="text-xs text-gray-600">
+                                              {warehouse.name}
+                                            </div>
+                                            <input
+                                              type="number"
+                                              placeholder="On Hand"
+                                              value={inv.on_hand ?? ""}
+                                              onChange={(e) =>
+                                                updateVariantInventory(
+                                                  index,
+                                                  warehouse.id,
+                                                  {
+                                                    on_hand: e.target.value
+                                                      ? Number(e.target.value)
+                                                      : undefined,
+                                                  }
+                                                )
+                                              }
+                                              className="rounded-md border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-600"
+                                            />
+                                            <div className="flex gap-1">
+                                              <input
+                                                type="number"
+                                                placeholder="Safety"
+                                                value={inv.safety_stock ?? ""}
+                                                onChange={(e) =>
+                                                  updateVariantInventory(
+                                                    index,
+                                                    warehouse.id,
+                                                    {
+                                                      safety_stock: e.target
+                                                        .value
+                                                        ? Number(e.target.value)
+                                                        : undefined,
+                                                    }
+                                                  )
+                                                }
+                                                className="flex-1 rounded-md border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-600"
+                                              />
+                                              <input
+                                                type="number"
+                                                placeholder="Reorder"
+                                                value={inv.reorder_point ?? ""}
+                                                onChange={(e) =>
+                                                  updateVariantInventory(
+                                                    index,
+                                                    warehouse.id,
+                                                    {
+                                                      reorder_point: e.target
+                                                        .value
+                                                        ? Number(e.target.value)
+                                                        : undefined,
+                                                    }
+                                                  )
+                                                }
+                                                className="flex-1 rounded-md border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-600"
+                                              />
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
                             </div>
 
                             <button
