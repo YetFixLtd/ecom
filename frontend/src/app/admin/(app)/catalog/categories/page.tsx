@@ -27,9 +27,6 @@ export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [parentFilter, setParentFilter] = useState<number | null | "all">(
     "all"
@@ -53,8 +50,6 @@ export default function CategoriesPage() {
       }
 
       const params: Record<string, string | number | boolean | null> = {
-        page: currentPage,
-        size: 100, // Get more for tree view
         include_all: true,
         with_children: true,
         with_parent: true,
@@ -67,8 +62,6 @@ export default function CategoriesPage() {
 
       const response = await getCategories(token, params);
       setCategories(response.data);
-      setTotalPages(response.meta.last_page);
-      setTotal(response.meta.total);
     } catch (err) {
       if (err instanceof AxiosError) {
         setError(err.response?.data?.message || "Failed to fetch categories");
@@ -82,10 +75,9 @@ export default function CategoriesPage() {
 
   useEffect(() => {
     fetchCategories();
-  }, [currentPage, parentFilter]);
+  }, [parentFilter]);
 
   const handleSearch = () => {
-    setCurrentPage(1);
     fetchCategories();
   };
 
@@ -269,7 +261,6 @@ export default function CategoriesPage() {
                 setParentFilter(
                   value === "all" ? "all" : value === "" ? null : Number(value)
                 );
-                setCurrentPage(1);
               }}
               className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
             >

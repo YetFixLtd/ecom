@@ -9,6 +9,7 @@ use App\Http\Resources\Admin\CategoryResource;
 use App\Models\Catalog\Category;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class CategoryController extends Controller
@@ -61,11 +62,12 @@ class CategoryController extends Controller
             $query->with('parent');
         }
 
-        // Pagination
-        $perPage = min($request->get('size', 15), 100);
-        $categories = $query->paginate($perPage);
+        // Return all matching categories without pagination for admin views
+        $categories = $query->get();
 
-        return CategoryResource::collection($categories)->response();
+        return response()->json([
+            'data' => CategoryResource::collection($categories),
+        ]);
     }
 
     /**
@@ -143,8 +145,8 @@ class CategoryController extends Controller
         // Handle image upload if present
         if ($request->hasFile('image')) {
             // Delete old image if exists
-            if ($category->image_path && \Storage::disk('public')->exists($category->image_path)) {
-                \Storage::disk('public')->delete($category->image_path);
+            if ($category->image_path && Storage::disk('public')->exists($category->image_path)) {
+                Storage::disk('public')->delete($category->image_path);
             }
 
             $file = $request->file('image');
@@ -178,8 +180,8 @@ class CategoryController extends Controller
         }
 
         // Delete image if exists
-        if ($category->image_path && \Storage::disk('public')->exists($category->image_path)) {
-            \Storage::disk('public')->delete($category->image_path);
+        if ($category->image_path && Storage::disk('public')->exists($category->image_path)) {
+            Storage::disk('public')->delete($category->image_path);
         }
 
         $category->delete();
