@@ -28,8 +28,8 @@ class AdministratorSeeder extends Seeder
 
         // Create default super admin
         Administrator::create([
-            'email' => 'admin@ecommerce.com',
-            'password_hash' => Hash::make('Admin@123!'),
+            'email' => 'ecom@yetfix.com',
+            'password_hash' => Hash::make('yetfixIsTHePassword55'),
             'first_name' => 'Super',
             'last_name' => 'Admin',
             'phone' => '+1234567890',
@@ -39,8 +39,8 @@ class AdministratorSeeder extends Seeder
         ]);
 
         $this->command->info('Default super admin created successfully!');
-        $this->command->warn('Email: admin@ecommerce.com');
-        $this->command->warn('Password: Admin@123!');
+        $this->command->warn('Email: ecom@yetfix.com');
+        $this->command->warn('Password: yetfixIsTHePassword55');
         $this->command->warn('IMPORTANT: Change this password immediately after first login!');
 
         // Create sample administrators for testing (optional - uncomment if needed)
