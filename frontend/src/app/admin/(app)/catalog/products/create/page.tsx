@@ -807,10 +807,26 @@ export default function CreateProductPage() {
                   {/* Simple product inventory by warehouse */}
                   {warehouses.length > 0 && (
                     <div className="mt-4 rounded-md border p-3">
-                      <label className="mb-2 block text-sm font-medium">
+                      <label className="mb-3 block text-sm font-medium">
                         Initial Inventory by Warehouse
                       </label>
-                      <div className="space-y-2">
+                      <div className="space-y-3">
+                        {/* Header row */}
+                        <div className="grid grid-cols-4 gap-3 border-b pb-2">
+                          <div className="text-xs font-medium text-gray-700">
+                            Warehouse
+                          </div>
+                          <div className="text-xs font-medium text-gray-700">
+                            On Hand
+                          </div>
+                          <div className="text-xs font-medium text-gray-700">
+                            Safety
+                          </div>
+                          <div className="text-xs font-medium text-gray-700">
+                            Reorder
+                          </div>
+                        </div>
+                        {/* Warehouse rows */}
                         {warehouses.map((warehouse) => {
                           const inv =
                             simpleInventory.find(
@@ -819,14 +835,15 @@ export default function CreateProductPage() {
                           return (
                             <div
                               key={warehouse.id}
-                              className="grid grid-cols-3 gap-2"
+                              className="grid grid-cols-4 gap-3 items-center"
                             >
-                              <div className="text-xs text-gray-600">
+                              <div className="text-sm text-gray-700">
                                 {warehouse.name}
                               </div>
                               <input
                                 type="number"
-                                placeholder="On Hand"
+                                step="0.01"
+                                placeholder="0.00"
                                 value={inv.on_hand ?? ""}
                                 onChange={(e) =>
                                   updateSimpleInventory(warehouse.id, {
@@ -835,36 +852,36 @@ export default function CreateProductPage() {
                                       : undefined,
                                   })
                                 }
-                                className="rounded-md border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-600"
+                                className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
                               />
-                              <div className="flex gap-1">
-                                <input
-                                  type="number"
-                                  placeholder="Safety"
-                                  value={inv.safety_stock ?? ""}
-                                  onChange={(e) =>
-                                    updateSimpleInventory(warehouse.id, {
-                                      safety_stock: e.target.value
-                                        ? Number(e.target.value)
-                                        : undefined,
-                                    })
-                                  }
-                                  className="flex-1 rounded-md border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-600"
-                                />
-                                <input
-                                  type="number"
-                                  placeholder="Reorder"
-                                  value={inv.reorder_point ?? ""}
-                                  onChange={(e) =>
-                                    updateSimpleInventory(warehouse.id, {
-                                      reorder_point: e.target.value
-                                        ? Number(e.target.value)
-                                        : undefined,
-                                    })
-                                  }
-                                  className="flex-1 rounded-md border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-600"
-                                />
-                              </div>
+                              <input
+                                type="number"
+                                step="0.01"
+                                placeholder="0.00"
+                                value={inv.safety_stock ?? ""}
+                                onChange={(e) =>
+                                  updateSimpleInventory(warehouse.id, {
+                                    safety_stock: e.target.value
+                                      ? Number(e.target.value)
+                                      : undefined,
+                                  })
+                                }
+                                className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                              />
+                              <input
+                                type="number"
+                                step="0.01"
+                                placeholder="0.00"
+                                value={inv.reorder_point ?? ""}
+                                onChange={(e) =>
+                                  updateSimpleInventory(warehouse.id, {
+                                    reorder_point: e.target.value
+                                      ? Number(e.target.value)
+                                      : undefined,
+                                  })
+                                }
+                                className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                              />
                             </div>
                           );
                         })}
@@ -1085,10 +1102,26 @@ export default function CreateProductPage() {
                               {/* Warehouse Inventory */}
                               {variant.track_stock && warehouses.length > 0 && (
                                 <div className="mt-3 rounded-md border p-3">
-                                  <label className="mb-2 block text-sm font-medium">
+                                  <label className="mb-3 block text-sm font-medium">
                                     Initial Inventory by Warehouse
                                   </label>
-                                  <div className="space-y-2">
+                                  <div className="space-y-3">
+                                    {/* Header row */}
+                                    <div className="grid grid-cols-4 gap-3 border-b pb-2">
+                                      <div className="text-xs font-medium text-gray-700">
+                                        Warehouse
+                                      </div>
+                                      <div className="text-xs font-medium text-gray-700">
+                                        On Hand
+                                      </div>
+                                      <div className="text-xs font-medium text-gray-700">
+                                        Safety
+                                      </div>
+                                      <div className="text-xs font-medium text-gray-700">
+                                        Reorder
+                                      </div>
+                                    </div>
+                                    {/* Warehouse rows */}
                                     {warehouses.map((warehouse) => {
                                       const inv = variant.inventory?.find(
                                         (i) => i.warehouse_id === warehouse.id
@@ -1096,14 +1129,15 @@ export default function CreateProductPage() {
                                       return (
                                         <div
                                           key={warehouse.id}
-                                          className="grid grid-cols-3 gap-2"
+                                          className="grid grid-cols-4 gap-3 items-center"
                                         >
-                                          <div className="text-xs text-gray-600">
+                                          <div className="text-sm text-gray-700">
                                             {warehouse.name}
                                           </div>
                                           <input
                                             type="number"
-                                            placeholder="On Hand"
+                                            step="0.01"
+                                            placeholder="0.00"
                                             value={inv?.on_hand || ""}
                                             onChange={(e) =>
                                               updateVariantInventory(
@@ -1116,45 +1150,44 @@ export default function CreateProductPage() {
                                                 }
                                               )
                                             }
-                                            className="rounded-md border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-600"
+                                            className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
                                           />
-                                          <div className="flex gap-1">
-                                            <input
-                                              type="number"
-                                              placeholder="Safety"
-                                              value={inv?.safety_stock || ""}
-                                              onChange={(e) =>
-                                                updateVariantInventory(
-                                                  index,
-                                                  warehouse.id,
-                                                  {
-                                                    safety_stock: e.target.value
-                                                      ? Number(e.target.value)
-                                                      : undefined,
-                                                  }
-                                                )
-                                              }
-                                              className="flex-1 rounded-md border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-600"
-                                            />
-                                            <input
-                                              type="number"
-                                              placeholder="Reorder"
-                                              value={inv?.reorder_point || ""}
-                                              onChange={(e) =>
-                                                updateVariantInventory(
-                                                  index,
-                                                  warehouse.id,
-                                                  {
-                                                    reorder_point: e.target
-                                                      .value
-                                                      ? Number(e.target.value)
-                                                      : undefined,
-                                                  }
-                                                )
-                                              }
-                                              className="flex-1 rounded-md border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-600"
-                                            />
-                                          </div>
+                                          <input
+                                            type="number"
+                                            step="0.01"
+                                            placeholder="0.00"
+                                            value={inv?.safety_stock || ""}
+                                            onChange={(e) =>
+                                              updateVariantInventory(
+                                                index,
+                                                warehouse.id,
+                                                {
+                                                  safety_stock: e.target.value
+                                                    ? Number(e.target.value)
+                                                    : undefined,
+                                                }
+                                              )
+                                            }
+                                            className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                                          />
+                                          <input
+                                            type="number"
+                                            step="0.01"
+                                            placeholder="0.00"
+                                            value={inv?.reorder_point || ""}
+                                            onChange={(e) =>
+                                              updateVariantInventory(
+                                                index,
+                                                warehouse.id,
+                                                {
+                                                  reorder_point: e.target.value
+                                                    ? Number(e.target.value)
+                                                    : undefined,
+                                                }
+                                              )
+                                            }
+                                            className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                                          />
                                         </div>
                                       );
                                     })}
