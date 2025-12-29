@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\Admin\Inventory\MovementController;
 use App\Http\Controllers\Api\Admin\Inventory\ReservationController;
 use App\Http\Controllers\Api\Admin\OrderController;
 use App\Http\Controllers\Api\Admin\FulfillmentController;
+use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Client\AddressController;
 use App\Http\Controllers\Api\Client\ProductController as ClientProductController;
 use App\Http\Controllers\Api\Client\CategoryController as ClientCategoryController;
@@ -127,6 +128,11 @@ Route::prefix('v1')->group(function () {
             Route::get('/auth/me', [AdminAuthController::class, 'me'])->name('api.admin.auth.me');
             Route::put('/auth/profile', [AdminAuthController::class, 'updateProfile'])->name('api.admin.auth.profile');
             Route::put('/auth/password', [AdminAuthController::class, 'changePassword'])->name('api.admin.auth.password');
+
+            // Dashboard routes
+            Route::get('/dashboard/stats', [DashboardController::class, 'stats'])->name('api.admin.dashboard.stats');
+            Route::get('/dashboard/recent-orders', [DashboardController::class, 'recentOrders'])->name('api.admin.dashboard.recent-orders');
+            Route::get('/dashboard/activity', [DashboardController::class, 'activity'])->name('api.admin.dashboard.activity');
         });
 
         // Admin management routes (super_admin only)
