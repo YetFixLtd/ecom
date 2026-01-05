@@ -35,7 +35,10 @@ export function RevenueChart({ data }: RevenueChartProps) {
         <p className="text-sm text-gray-600">Last 30 days</p>
       </div>
       <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+        <LineChart
+          data={data}
+          margin={{ top: 5, right: 10, left: 0, bottom: 0 }}
+        >
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis
             dataKey="date"
@@ -49,7 +52,9 @@ export function RevenueChart({ data }: RevenueChartProps) {
             style={{ fontSize: "12px" }}
           />
           <Tooltip
-            formatter={(value: number) => formatCurrency(value)}
+            formatter={(value: number | undefined) =>
+              value !== undefined ? formatCurrency(value) : ""
+            }
             labelFormatter={(label) => formatDate(label)}
             contentStyle={{
               backgroundColor: "white",
@@ -70,4 +75,3 @@ export function RevenueChart({ data }: RevenueChartProps) {
     </div>
   );
 }
-
