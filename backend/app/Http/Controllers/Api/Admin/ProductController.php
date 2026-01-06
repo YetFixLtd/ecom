@@ -586,13 +586,13 @@ trait ProductImageStorage
 
     protected function resizeAndSave(string $binary, int $targetMax, string $disk, string $path): void
     {
-        $source = imagecreatefromstring($binary);
+        $source = \imagecreatefromstring($binary);
         if ($source === false) {
             throw new \RuntimeException('Invalid image data');
         }
 
-        $width = imagesx($source);
-        $height = imagesy($source);
+        $width = \imagesx($source);
+        $height = \imagesy($source);
 
         // Calculate new size preserving aspect ratio, scale so longest side == targetMax
         if ($width >= $height) {
@@ -603,30 +603,30 @@ trait ProductImageStorage
             $newWidth = (int) floor($width * ($targetMax / $height));
         }
 
-        $dest = imagecreatetruecolor($newWidth, $newHeight);
-        imagealphablending($dest, false);
-        imagesavealpha($dest, true);
+        $dest = \imagecreatetruecolor($newWidth, $newHeight);
+        \imagealphablending($dest, false);
+        \imagesavealpha($dest, true);
 
         // Preserve transparency for PNG/WebP
-        $transparent = imagecolorallocatealpha($dest, 0, 0, 0, 127);
-        imagefilledrectangle($dest, 0, 0, $newWidth, $newHeight, $transparent);
+        $transparent = \imagecolorallocatealpha($dest, 0, 0, 0, 127);
+        \imagefilledrectangle($dest, 0, 0, $newWidth, $newHeight, $transparent);
 
-        imagecopyresampled($dest, $source, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+        \imagecopyresampled($dest, $source, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
 
         // Determine encoder by file extension
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         ob_start();
         if ($ext === 'png') {
-            imagepng($dest, null, 6);
+            \imagepng($dest, null, 6);
         } elseif ($ext === 'webp') {
-            imagewebp($dest, null, 85);
+            \imagewebp($dest, null, 85);
         } else {
-            imagejpeg($dest, null, 85);
+            \imagejpeg($dest, null, 85);
         }
         $resizedData = ob_get_clean();
 
-        imagedestroy($source);
-        imagedestroy($dest);
+        \imagedestroy($source);
+        \imagedestroy($dest);
 
         Storage::disk($disk)->put($path, $resizedData);
     }
