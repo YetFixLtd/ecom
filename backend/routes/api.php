@@ -162,6 +162,7 @@ Route::prefix('v1')->group(function () {
             ]);
 
             // Categories
+            Route::post('categories/reorder', [CategoryController::class, 'reorder'])->name('api.admin.categories.reorder');
             Route::apiResource('categories', CategoryController::class)->names([
                 'index' => 'api.admin.categories.index',
                 'store' => 'api.admin.categories.store',

@@ -188,4 +188,26 @@ class CategoryController extends Controller
 
         return response()->json(['message' => 'Category deleted successfully'], 200);
     }
+
+    /**
+     * Reorder categories by updating their positions.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function reorder(Request $request): JsonResponse
+    {
+        $request->validate([
+            'categories' => ['required', 'array'],
+            'categories.*.id' => ['required', 'integer', 'exists:categories,id'],
+            'categories.*.position' => ['required', 'integer', 'min:0'],
+        ]);
+
+        foreach ($request->categories as $item) {
+            Category::where('id', $item['id'])
+                ->update(['position' => $item['position']]);
+        }
+
+        return response()->json(['message' => 'Categories reordered successfully']);
+    }
 }
