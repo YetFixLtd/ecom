@@ -9,6 +9,8 @@ import {
   ChevronRight,
   ChevronDown,
   Image as ImageIcon,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import {
   getCategories,
@@ -16,6 +18,7 @@ import {
   createCategory,
   updateCategory,
   deleteCategory,
+  reorderCategories,
 } from "@/lib/apis/categories";
 import { getAdminTokenFromCookies } from "@/lib/cookies";
 import { AxiosError } from "axios";
@@ -37,6 +40,7 @@ export default function CategoriesPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [parentCategoryId, setParentCategoryId] = useState<number | null>(null);
+  const [reordering, setReordering] = useState(false);
 
   const fetchCategories = async () => {
     setLoading(true);
@@ -109,14 +113,89 @@ export default function CategoriesPage() {
     setExpandedCategories(newExpanded);
   };
 
-  const rootCategories = categories.filter((cat) => !cat.parent_id);
+  const rootCategories = categories
+    .filter((cat) => !cat.parent_id)
+    .sort((a, b) => a.position - b.position);
   const getChildren = (parentId: number) =>
-    categories.filter((cat) => cat.parent_id === parentId);
+    categories
+      .filter((cat) => cat.parent_id === parentId)
+      .sort((a, b) => a.position - b.position);
+
+  // Get siblings of a category (categories with same parent), sorted by position
+  const getSiblings = (category: Category) => {
+    return categories
+      .filter((cat) => cat.parent_id === category.parent_id)
+      .sort((a, b) => a.position - b.position);
+  };
+
+  const handleMoveUp = async (category: Category) => {
+    const siblings = getSiblings(category);
+    const currentIndex = siblings.findIndex((c) => c.id === category.id);
+
+    if (currentIndex <= 0) return; // Already at top
+
+    const previousCategory = siblings[currentIndex - 1];
+    setReordering(true);
+
+    try {
+      const token = await getAdminTokenFromCookies();
+      if (!token) return;
+
+      // Swap positions
+      await reorderCategories(token, [
+        { id: category.id, position: previousCategory.position },
+        { id: previousCategory.id, position: category.position },
+      ]);
+
+      fetchCategories();
+    } catch (err) {
+      if (err instanceof AxiosError) {
+        alert(err.response?.data?.message || "Failed to reorder categories");
+      }
+    } finally {
+      setReordering(false);
+    }
+  };
+
+  const handleMoveDown = async (category: Category) => {
+    const siblings = getSiblings(category);
+    const currentIndex = siblings.findIndex((c) => c.id === category.id);
+
+    if (currentIndex >= siblings.length - 1) return; // Already at bottom
+
+    const nextCategory = siblings[currentIndex + 1];
+    setReordering(true);
+
+    try {
+      const token = await getAdminTokenFromCookies();
+      if (!token) return;
+
+      // Swap positions
+      await reorderCategories(token, [
+        { id: category.id, position: nextCategory.position },
+        { id: nextCategory.id, position: category.position },
+      ]);
+
+      fetchCategories();
+    } catch (err) {
+      if (err instanceof AxiosError) {
+        alert(err.response?.data?.message || "Failed to reorder categories");
+      }
+    } finally {
+      setReordering(false);
+    }
+  };
 
   const renderCategory = (category: Category, level = 0) => {
     const children = getChildren(category.id);
     const hasChildren = children.length > 0;
     const isExpanded = expandedCategories.has(category.id);
+
+    // Determine if we can move up/down within siblings
+    const siblings = getSiblings(category);
+    const siblingIndex = siblings.findIndex((c) => c.id === category.id);
+    const canMoveUp = siblingIndex > 0;
+    const canMoveDown = siblingIndex < siblings.length - 1;
 
     return (
       <div key={category.id}>
@@ -171,7 +250,34 @@ export default function CategoriesPage() {
                 `• ${category.products_count} products`}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            {/* Reorder buttons */}
+            <button
+              onClick={() => handleMoveUp(category)}
+              disabled={!canMoveUp || reordering}
+              className={`rounded p-1 ${
+                canMoveUp && !reordering
+                  ? "text-gray-600 hover:bg-gray-100"
+                  : "cursor-not-allowed text-gray-300"
+              }`}
+              title="Move up"
+            >
+              <ArrowUp className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => handleMoveDown(category)}
+              disabled={!canMoveDown || reordering}
+              className={`rounded p-1 ${
+                canMoveDown && !reordering
+                  ? "text-gray-600 hover:bg-gray-100"
+                  : "cursor-not-allowed text-gray-300"
+              }`}
+              title="Move down"
+            >
+              <ArrowDown className="h-4 w-4" />
+            </button>
+            <div className="mx-1 h-4 w-px bg-gray-200" />
+            {/* Action buttons */}
             <button
               onClick={() => {
                 setParentCategoryId(category.id);

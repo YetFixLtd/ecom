@@ -215,3 +215,21 @@ export async function deleteCategory(
   });
   return response.data;
 }
+
+/**
+ * Reorder categories by updating their positions
+ * Requires: admin or super_admin role
+ */
+export async function reorderCategories(
+  token: string,
+  categories: { id: number; position: number }[]
+): Promise<{ message: string }> {
+  const response = await api.post(
+    "/admin/categories/reorder",
+    { categories },
+    {
+      headers: getAuthHeaders(token),
+    }
+  );
+  return response.data;
+}
