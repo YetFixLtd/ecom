@@ -623,6 +623,7 @@ trait ProductImageStorage
         } else {
             \imagejpeg($dest, null, 85);
         }
+
         $resizedData = ob_get_clean();
 
         \imagedestroy($source);
