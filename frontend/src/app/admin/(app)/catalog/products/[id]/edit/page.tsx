@@ -49,6 +49,7 @@ const schema = z.object({
   published_status: z.enum(["draft", "published", "archived"]).optional(),
   is_active: z.boolean().optional(),
   is_featured: z.boolean().optional(),
+  is_upcoming: z.boolean().optional(),
   categories: z.array(z.number()).optional(),
 });
 
@@ -285,6 +286,7 @@ export default function EditProductPage() {
             | "archived",
           is_active: productData.is_active,
           is_featured: productData.is_featured ?? false,
+          is_upcoming: productData.is_upcoming ?? false,
           categories: productData.categories?.map((cat) => cat.id) || [],
         });
 
@@ -467,6 +469,11 @@ export default function EditProductPage() {
           values.is_featured !== undefined
             ? values.is_featured
             : product?.is_featured ?? false,
+        // Always send is_upcoming (boolean)
+        is_upcoming:
+          values.is_upcoming !== undefined
+            ? values.is_upcoming
+            : product?.is_upcoming ?? false,
         // Always send categories array (even if empty)
         categories:
           values.categories !== undefined
@@ -1535,6 +1542,21 @@ export default function EditProductPage() {
                     className="text-sm font-medium"
                   >
                     Featured
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    {...register("is_upcoming")}
+                    id="is_upcoming_edit"
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                  />
+                  <label
+                    htmlFor="is_upcoming_edit"
+                    className="text-sm font-medium"
+                  >
+                    Upcoming Product
                   </label>
                 </div>
               </div>

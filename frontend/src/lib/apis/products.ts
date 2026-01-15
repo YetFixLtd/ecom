@@ -98,6 +98,7 @@ export interface Product {
   published_status: string;
   is_active: boolean;
   is_featured: boolean;
+  is_upcoming?: boolean;
   sort_order: number;
   meta_title: string | null;
   meta_description: string | null;
@@ -128,6 +129,9 @@ export interface ProductListParams {
   published_status?: string;
   is_active?: boolean;
   product_type?: string;
+  stockout?: boolean;
+  zero_price?: boolean;
+  is_upcoming?: boolean;
 }
 
 export interface ProductListResponse {
@@ -172,6 +176,8 @@ export interface CreateProductData {
   brand_id?: number | null;
   published_status?: string;
   is_active?: boolean;
+  is_featured?: boolean;
+  is_upcoming?: boolean;
   sort_order?: number;
   meta_title?: string;
   meta_description?: string;
@@ -207,6 +213,7 @@ export interface UpdateProductData {
   published_status?: string;
   is_active?: boolean;
   is_featured?: boolean;
+  is_upcoming?: boolean;
   sort_order?: number;
   meta_title?: string;
   meta_description?: string;
@@ -296,6 +303,12 @@ export async function createProduct(
   }
   if (data.is_active !== undefined) {
     formData.append("is_active", data.is_active ? "1" : "0");
+  }
+  if (data.is_featured !== undefined) {
+    formData.append("is_featured", data.is_featured ? "1" : "0");
+  }
+  if (data.is_upcoming !== undefined) {
+    formData.append("is_upcoming", data.is_upcoming ? "1" : "0");
   }
   if (data.sort_order !== undefined) {
     formData.append("sort_order", String(data.sort_order));
@@ -416,6 +429,9 @@ export async function updateProduct(
   // Send is_featured as "1" or "0" for Laravel compatibility
   if (data.is_featured !== undefined)
     formData.append("is_featured", data.is_featured ? "1" : "0");
+  // Send is_upcoming as "1" or "0" for Laravel compatibility
+  if (data.is_upcoming !== undefined)
+    formData.append("is_upcoming", data.is_upcoming ? "1" : "0");
   if (data.sort_order !== undefined)
     formData.append("sort_order", String(data.sort_order));
   if (data.meta_title !== undefined)

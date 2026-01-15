@@ -93,7 +93,7 @@ export default function HeroCarousel() {
                   {currentProduct.name}
                 </h1>
                 {currentProduct.short_description && (
-                  <p className="text-base md:text-lg text-gray-700 font-medium line-clamp-2">
+                  <p className="text-base md:text-lg text-gray-700 font-medium line-clamp-2 whitespace-pre-wrap break-words">
                     {currentProduct.short_description}
                   </p>
                 )}

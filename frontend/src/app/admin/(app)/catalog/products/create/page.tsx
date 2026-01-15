@@ -39,6 +39,8 @@ const schema = z.object({
   brand_id: z.number().nullable().optional(),
   published_status: z.enum(["draft", "published", "archived"]),
   is_active: z.boolean().optional(),
+  is_featured: z.boolean().optional(),
+  is_upcoming: z.boolean().optional(),
   categories: z.array(z.number()).optional(),
 });
 
@@ -94,6 +96,8 @@ export default function CreateProductPage() {
       product_type: "simple",
       published_status: "draft",
       is_active: true,
+      is_featured: false,
+      is_upcoming: false,
       categories: [],
     },
   });
@@ -425,6 +429,8 @@ export default function CreateProductPage() {
           values.brand_id && values.brand_id > 0 ? values.brand_id : null,
         published_status: values.published_status,
         is_active: values.is_active ?? true,
+        is_featured: values.is_featured ?? false,
+        is_upcoming: values.is_upcoming ?? false,
         categories:
           values.categories && values.categories.length > 0
             ? values.categories
@@ -1400,6 +1406,30 @@ export default function CreateProductPage() {
                   />
                   <label htmlFor="is_active" className="text-sm font-medium">
                     Active
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    {...register("is_featured")}
+                    id="is_featured"
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                  />
+                  <label htmlFor="is_featured" className="text-sm font-medium">
+                    Featured
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    {...register("is_upcoming")}
+                    id="is_upcoming"
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                  />
+                  <label htmlFor="is_upcoming" className="text-sm font-medium">
+                    Upcoming Product
                   </label>
                 </div>
               </div>

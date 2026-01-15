@@ -101,6 +101,7 @@ export interface ClientProduct {
   min_price: number | null;
   max_price: number | null;
   is_featured: boolean;
+  is_upcoming?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -112,6 +113,7 @@ export interface ProductListParams {
   min_price?: number;
   max_price?: number;
   featured?: boolean;
+  upcoming?: boolean;
   sort?: string;
   order?: "asc" | "desc";
   per_page?: number;

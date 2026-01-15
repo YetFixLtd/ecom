@@ -70,6 +70,28 @@ class ProductController extends Controller
             $query->where('product_type', $request->product_type);
         }
 
+        // Filter by is_upcoming
+        if ($request->has('is_upcoming')) {
+            $query->where('is_upcoming', $request->boolean('is_upcoming'));
+        }
+
+        // Filter by stockout (products where all variants have 0 available stock)
+        if ($request->boolean('stockout')) {
+            $query->whereHas('variants', function ($variantQuery) {
+                $variantQuery->where('track_stock', true);
+            })->whereDoesntHave('variants.inventoryItems', function ($inventoryQuery) {
+                $inventoryQuery->whereRaw('(on_hand - reserved) > 0');
+            });
+        }
+
+        // Filter by zero_price (products where all variants have price = 0)
+        if ($request->boolean('zero_price')) {
+            $query->whereHas('variants')
+                ->whereDoesntHave('variants', function ($variantQuery) {
+                    $variantQuery->where('price', '>', 0);
+                });
+        }
+
         // Sorting
         $sortBy = $request->get('sort', '-created_at');
         $sortDirection = str_starts_with($sortBy, '-') ? 'desc' : 'asc';

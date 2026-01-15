@@ -320,14 +320,24 @@ export default function ProductCardEnhanced({
       href={`/products/${product.id}`}
       className="group bg-white border border-[#E5E5E5] rounded-lg overflow-hidden hover:shadow-md transition-shadow relative"
     >
-      {/* Stockout Badge */}
-      {isStockout && (
-        <div className="absolute top-2 right-2 z-20">
+      {/* Badges */}
+      <div className="absolute top-2 right-2 z-20 flex flex-col gap-1">
+        {product.is_upcoming && (
+          <span className="bg-orange-500 text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg">
+            Upcoming
+          </span>
+        )}
+        {product.is_featured && (
+          <span className="bg-yellow-400 text-yellow-900 px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg">
+            Featured
+          </span>
+        )}
+        {isStockout && !product.is_upcoming && (
           <span className="bg-red-600 text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg">
             Stockout
           </span>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Category Label */}
       <div className="absolute top-2 left-2 z-10">

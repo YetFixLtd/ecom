@@ -19,6 +19,9 @@ export default function ProductsPage() {
   const [brandFilter, setBrandFilter] = useState<string>("");
   const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [stockoutFilter, setStockoutFilter] = useState<boolean>(false);
+  const [zeroPriceFilter, setZeroPriceFilter] = useState<boolean>(false);
+  const [upcomingFilter, setUpcomingFilter] = useState<boolean>(false);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -31,7 +34,7 @@ export default function ProductsPage() {
         return;
       }
 
-      const params: Record<string, string | number> = {
+      const params: Record<string, string | number | boolean> = {
         page: currentPage,
         size: 15,
       };
@@ -40,6 +43,9 @@ export default function ProductsPage() {
       if (brandFilter) params.brand_id = Number(brandFilter);
       if (categoryFilter) params.category_id = Number(categoryFilter);
       if (statusFilter) params.published_status = statusFilter;
+      if (stockoutFilter) params.stockout = true;
+      if (zeroPriceFilter) params.zero_price = true;
+      if (upcomingFilter) params.is_upcoming = true;
 
       const response = await getProducts(token, params);
       setProducts(response.data);
@@ -58,7 +64,7 @@ export default function ProductsPage() {
 
   useEffect(() => {
     fetchProducts();
-  }, [currentPage, brandFilter, categoryFilter, statusFilter]);
+  }, [currentPage, brandFilter, categoryFilter, statusFilter, stockoutFilter, zeroPriceFilter, upcomingFilter]);
 
   const handleSearch = () => {
     setCurrentPage(1);
@@ -136,6 +142,56 @@ export default function ProductsPage() {
               <option value="published">Published</option>
               <option value="archived">Archived</option>
             </select>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-4 md:grid-cols-3">
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="stockout"
+              checked={stockoutFilter}
+              onChange={(e) => {
+                setStockoutFilter(e.target.checked);
+                setCurrentPage(1);
+              }}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <label htmlFor="stockout" className="text-sm font-medium text-gray-700">
+              Stockout Items
+            </label>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="zero-price"
+              checked={zeroPriceFilter}
+              onChange={(e) => {
+                setZeroPriceFilter(e.target.checked);
+                setCurrentPage(1);
+              }}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <label htmlFor="zero-price" className="text-sm font-medium text-gray-700">
+              Zero Price Items
+            </label>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="upcoming"
+              checked={upcomingFilter}
+              onChange={(e) => {
+                setUpcomingFilter(e.target.checked);
+                setCurrentPage(1);
+              }}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <label htmlFor="upcoming" className="text-sm font-medium text-gray-700">
+              Upcoming Products
+            </label>
           </div>
         </div>
       </div>
@@ -217,17 +273,24 @@ export default function ProductsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">
-                      <span
-                        className={`rounded-full px-2 py-1 text-xs ${
-                          product.published_status === "published"
-                            ? "bg-green-100 text-green-700"
-                            : product.published_status === "draft"
-                            ? "bg-yellow-100 text-yellow-700"
-                            : "bg-gray-100 text-gray-700"
-                        }`}
-                      >
-                        {product.published_status}
-                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        <span
+                          className={`rounded-full px-2 py-1 text-xs ${
+                            product.published_status === "published"
+                              ? "bg-green-100 text-green-700"
+                              : product.published_status === "draft"
+                              ? "bg-yellow-100 text-yellow-700"
+                              : "bg-gray-100 text-gray-700"
+                          }`}
+                        >
+                          {product.published_status}
+                        </span>
+                        {product.is_upcoming && (
+                          <span className="rounded-full bg-purple-100 px-2 py-1 text-xs text-purple-700">
+                            Upcoming
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">
                       {product.brand?.name || "—"}

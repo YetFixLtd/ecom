@@ -75,6 +75,34 @@ class ProductController extends Controller
             $query->where('is_featured', $request->boolean('featured'));
         }
 
+        // Filter by upcoming (exclude stockout items)
+        if ($request->has('upcoming')) {
+            if ($request->boolean('upcoming')) {
+                $query->where('is_upcoming', true);
+                // Exclude stockout items: products where all stock-tracked variants have 0 available stock
+                // A product is NOT stockout if it has:
+                // - Variants that don't track stock, OR
+                // - At least one variant with available stock, OR
+                // - At least one variant that allows backorder
+                $query->where(function ($q) {
+                    // Products with no stock-tracked variants (can't be stockout)
+                    $q->whereDoesntHave('variants', function ($variantQuery) {
+                        $variantQuery->where('track_stock', true);
+                    })
+                    // OR products with at least one available variant
+                    ->orWhereHas('variants.inventoryItems', function ($inventoryQuery) {
+                        $inventoryQuery->whereRaw('(on_hand - reserved) > 0');
+                    })
+                    // OR products with variants that allow backorder
+                    ->orWhereHas('variants', function ($variantQuery) {
+                        $variantQuery->where('allow_backorder', true);
+                    });
+                });
+            } else {
+                $query->where('is_upcoming', false);
+            }
+        }
+
         // Sorting
         $sortBy = $request->get('sort', 'created_at');
         $sortOrder = $request->get('order', 'desc');

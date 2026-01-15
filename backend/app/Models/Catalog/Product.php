@@ -38,6 +38,7 @@ class Product extends Model
         'width_mm',
         'height_mm',
         'is_featured',
+        'is_upcoming',
         'is_active',
         'seo_title',
         'seo_description',
@@ -57,6 +58,7 @@ class Product extends Model
             'width_mm' => 'integer',
             'height_mm' => 'integer',
             'is_featured' => 'boolean',
+            'is_upcoming' => 'boolean',
             'is_active' => 'boolean',
             'sort_order' => 'integer',
         ];

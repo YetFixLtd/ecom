@@ -28,11 +28,18 @@ export default function ProductCard({ product }: ProductCardProps) {
           className="object-cover group-hover:scale-105 transition-transform duration-300"
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
         />
-        {product.is_featured && (
-          <span className="absolute top-2 right-2 bg-yellow-400 text-yellow-900 text-xs font-semibold px-2 py-1 rounded">
-            Featured
-          </span>
-        )}
+        <div className="absolute top-2 right-2 flex flex-col gap-1">
+          {product.is_upcoming && (
+            <span className="bg-orange-500 text-white text-xs font-semibold px-2 py-1 rounded shadow-md">
+              Upcoming
+            </span>
+          )}
+          {product.is_featured && (
+            <span className="bg-yellow-400 text-yellow-900 text-xs font-semibold px-2 py-1 rounded">
+              Featured
+            </span>
+          )}
+        </div>
       </div>
       <div className="p-4">
         <h3 className="font-semibold text-zinc-900 mb-1 line-clamp-2 group-hover:text-zinc-600 transition-colors">
@@ -42,7 +49,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           <p className="text-sm text-zinc-500 mb-2">{product.brand.name}</p>
         )}
         {product.short_description && (
-          <p className="text-sm text-zinc-600 mb-3 line-clamp-2">
+          <p className="text-sm text-zinc-600 mb-3 line-clamp-2 whitespace-pre-wrap break-words">
             {product.short_description}
           </p>
         )}

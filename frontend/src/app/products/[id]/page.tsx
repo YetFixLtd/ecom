@@ -285,9 +285,21 @@ export default function ProductDetailPage() {
 
             {/* Product Info */}
             <div>
-              <h1 className="text-3xl font-bold text-zinc-900 mb-4">
-                {product.name}
-              </h1>
+              <div className="flex items-center gap-3 mb-4">
+                <h1 className="text-3xl font-bold text-zinc-900">
+                  {product.name}
+                </h1>
+                {product.is_upcoming && (
+                  <span className="bg-orange-500 text-white px-4 py-1.5 rounded-full text-sm font-semibold shadow-md">
+                    Upcoming
+                  </span>
+                )}
+                {product.is_featured && (
+                  <span className="bg-yellow-400 text-yellow-900 px-4 py-1.5 rounded-full text-sm font-semibold">
+                    Featured
+                  </span>
+                )}
+              </div>
 
               {product.brand && (
                 <p className="text-lg text-zinc-600 mb-4">
@@ -327,7 +339,7 @@ export default function ProductDetailPage() {
               </div>
 
               {product.short_description && (
-                <p className="text-zinc-700 mb-6">
+                <p className="text-zinc-700 mb-6 whitespace-pre-wrap break-words">
                   {product.short_description}
                 </p>
               )}
@@ -366,7 +378,7 @@ export default function ProductDetailPage() {
               )}
 
               {/* Stockout Message */}
-              {isStockout && (
+              {isStockout && !product.is_upcoming && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
                   <p className="text-red-800 font-semibold text-sm">
                     Stockout - This item is currently out of stock.

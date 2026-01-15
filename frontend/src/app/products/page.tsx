@@ -37,6 +37,9 @@ function ProductsContent() {
   const [featured, setFeatured] = useState(
     searchParams.get("featured") === "true"
   );
+  const [upcoming, setUpcoming] = useState(
+    searchParams.get("upcoming") === "true"
+  );
   const [sort, setSort] = useState(searchParams.get("sort") || "created_at");
   const [order, setOrder] = useState<"asc" | "desc">(
     (searchParams.get("order") as "asc" | "desc") || "desc"
@@ -54,6 +57,7 @@ function ProductsContent() {
     minPrice,
     maxPrice,
     featured,
+    upcoming,
     sort,
     order,
   ]);
@@ -78,6 +82,7 @@ function ProductsContent() {
       if (minPrice) params.min_price = parseFloat(minPrice);
       if (maxPrice) params.max_price = parseFloat(maxPrice);
       if (featured) params.featured = true;
+      if (upcoming) params.upcoming = true;
 
       const response = await getProducts(params);
       setProducts(response.data);
@@ -116,6 +121,7 @@ function ProductsContent() {
     if (minPrice) params.set("min_price", minPrice);
     if (maxPrice) params.set("max_price", maxPrice);
     if (featured) params.set("featured", "true");
+    if (upcoming) params.set("upcoming", "true");
     if (sort !== "created_at") params.set("sort", sort);
     if (order !== "desc") params.set("order", order);
     router.push(`/products?${params.toString()}`);
@@ -225,7 +231,7 @@ function ProductsContent() {
                   className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-500"
                 />
               </div>
-              <div className="flex items-end">
+              <div className="flex items-end gap-4">
                 <label className="flex items-center">
                   <input
                     type="checkbox"
@@ -235,6 +241,17 @@ function ProductsContent() {
                   />
                   <span className="text-sm font-medium text-zinc-700">
                     Featured Only
+                  </span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={upcoming}
+                    onChange={(e) => setUpcoming(e.target.checked)}
+                    className="mr-2"
+                  />
+                  <span className="text-sm font-medium text-zinc-700">
+                    Upcoming Only
                   </span>
                 </label>
               </div>

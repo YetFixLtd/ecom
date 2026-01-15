@@ -4,6 +4,7 @@ import TopNavigation from "@/components/client/TopNavigation";
 import HeroCarousel from "@/components/client/HeroCarousel";
 import PromotionalDeals from "@/components/client/PromotionalDeals";
 import ProductTabs from "@/components/client/ProductTabs";
+import UpcomingProducts from "@/components/client/UpcomingProducts";
 import LazyLoadProducts from "@/components/client/LazyLoadProducts";
 
 export const metadata = {
@@ -24,6 +25,7 @@ export default async function Home() {
       {/* Full Width Sections */}
       <PromotionalDeals />
       <ProductTabs />
+      <UpcomingProducts />
       <LazyLoadProducts />
       {/* <NewsletterSignup /> */}
 

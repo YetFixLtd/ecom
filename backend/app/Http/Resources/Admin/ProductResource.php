@@ -31,6 +31,7 @@ class ProductResource extends JsonResource
             'width_mm' => $this->width_mm,
             'height_mm' => $this->height_mm,
             'is_featured' => $this->is_featured,
+            'is_upcoming' => $this->is_upcoming,
             'is_active' => $this->is_active,
             'seo_title' => $this->seo_title,
             'seo_description' => $this->seo_description,
