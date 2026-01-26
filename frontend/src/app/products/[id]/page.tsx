@@ -332,23 +332,25 @@ export default function ProductDetailPage() {
                 </div>
               )}
 
-              <div className="mb-6">
-                <div className="flex items-center gap-4 mb-2">
-                  <span className="text-3xl font-bold text-zinc-900">
-                    ৳{price.toFixed(2)}
-                  </span>
+              {!product.is_upcoming && (
+                <div className="mb-6">
+                  <div className="flex items-center gap-4 mb-2">
+                    <span className="text-3xl font-bold text-zinc-900">
+                      ৳{price.toFixed(2)}
+                    </span>
+                    {comparePrice && comparePrice > price && (
+                      <span className="text-xl text-zinc-500 line-through">
+                        ৳{comparePrice.toFixed(2)}
+                      </span>
+                    )}
+                  </div>
                   {comparePrice && comparePrice > price && (
-                    <span className="text-xl text-zinc-500 line-through">
-                      ৳{comparePrice.toFixed(2)}
+                    <span className="text-sm text-red-600">
+                      Save ৳{(comparePrice - price).toFixed(2)}
                     </span>
                   )}
                 </div>
-                {comparePrice && comparePrice > price && (
-                  <span className="text-sm text-red-600">
-                    Save ৳{(comparePrice - price).toFixed(2)}
-                  </span>
-                )}
-              </div>
+              )}
 
               {product.short_description && (
                 <p className="text-zinc-700 mb-6 whitespace-pre-wrap break-words">
@@ -377,7 +379,8 @@ export default function ProductDetailPage() {
                   >
                     {variants.map((variant) => (
                       <option key={variant.id} value={variant.id}>
-                        {variant.sku} - ৳{variant.price.toFixed(2)}
+                        {variant.sku}
+                        {!product.is_upcoming && ` - ৳${variant.price.toFixed(2)}`}
                         {variant.attributes &&
                           variant.attributes.length > 0 &&
                           ` (${variant.attributes

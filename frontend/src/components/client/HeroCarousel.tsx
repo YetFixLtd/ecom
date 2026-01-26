@@ -98,22 +98,24 @@ export default function HeroCarousel() {
                   </p>
                 )}
               </div>
-              <div className="flex items-baseline gap-1">
-                <span className="text-lg md:text-xl text-gray-600 font-medium">
-                  {currentProduct.min_price &&
-                  currentProduct.max_price &&
-                  currentProduct.min_price !== currentProduct.max_price
-                    ? "FROM"
-                    : ""}
-                </span>
-                <span className="text-5xl md:text-6xl lg:text-7xl font-black text-black">
-                  {priceMain}
-                </span>
+              {!currentProduct.is_upcoming && (
+                <div className="flex items-baseline gap-1">
+                  <span className="text-lg md:text-xl text-gray-600 font-medium">
+                    {currentProduct.min_price &&
+                    currentProduct.max_price &&
+                    currentProduct.min_price !== currentProduct.max_price
+                      ? "FROM"
+                      : ""}
+                  </span>
+                  <span className="text-5xl md:text-6xl lg:text-7xl font-black text-black">
+                    {priceMain}
+                  </span>
 
-                <span className="text-xl md:text-2xl lg:text-3xl font-black text-black">
-                  ৳
-                </span>
-              </div>
+                  <span className="text-xl md:text-2xl lg:text-3xl font-black text-black">
+                    ৳
+                  </span>
+                </div>
+              )}
               <Link
                 href={`/products/${currentProduct.id}`}
                 className="inline-block bg-[#FFC107] text-black font-bold text-sm px-16 py-2 rounded-md hover:bg-[#FFD700] transition-colors shadow-md"

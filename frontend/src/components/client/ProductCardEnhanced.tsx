@@ -382,27 +382,29 @@ export default function ProductCardEnhanced({
         </h3>
 
         {/* Price */}
-        <div className="flex flex-col gap-1 mb-2 pr-20">
-          {comparePrice && comparePrice > price ? (
-            <div className="flex flex-col gap-1">
-              <div className="flex items-baseline gap-2">
-                <span className="text-lg font-bold text-[#DC2626]">
-                  ৳{price.toFixed(2)}
-                </span>
-                <span className="text-sm text-gray-500 line-through">
-                  ৳{comparePrice.toFixed(2)}
+        {!product.is_upcoming && (
+          <div className="flex flex-col gap-1 mb-2 pr-20">
+            {comparePrice && comparePrice > price ? (
+              <div className="flex flex-col gap-1">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-lg font-bold text-[#DC2626]">
+                    ৳{price.toFixed(2)}
+                  </span>
+                  <span className="text-sm text-gray-500 line-through">
+                    ৳{comparePrice.toFixed(2)}
+                  </span>
+                </div>
+                <span className="text-xs text-green-600 font-medium">
+                  Save ৳{(comparePrice - price).toFixed(2)}
                 </span>
               </div>
-              <span className="text-xs text-green-600 font-medium">
-                Save ৳{(comparePrice - price).toFixed(2)}
+            ) : (
+              <span className="text-lg font-bold text-black">
+                ৳{price.toFixed(2)}
               </span>
-            </div>
-          ) : (
-            <span className="text-lg font-bold text-black">
-              ৳{price.toFixed(2)}
-            </span>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Action Buttons */}

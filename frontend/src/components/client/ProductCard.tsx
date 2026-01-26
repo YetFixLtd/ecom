@@ -54,10 +54,12 @@ export default function ProductCard({ product }: ProductCardProps) {
           </p>
         )}
         <div className="flex items-center justify-between">
-          <span className="text-lg font-bold text-zinc-900">
-            {priceDisplay}
-          </span>
-          {product.min_price && product.max_price && (
+          {!product.is_upcoming && (
+            <span className="text-lg font-bold text-zinc-900">
+              {priceDisplay}
+            </span>
+          )}
+          {product.min_price && product.max_price && !product.is_upcoming && (
             <span className="text-sm text-zinc-500">
               {product.variants?.length || 0} variant
               {(product.variants?.length || 0) !== 1 ? "s" : ""}
