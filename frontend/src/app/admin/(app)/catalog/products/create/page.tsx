@@ -41,6 +41,7 @@ const schema = z.object({
   is_active: z.boolean().optional(),
   is_featured: z.boolean().optional(),
   is_upcoming: z.boolean().optional(),
+  call_for_price: z.boolean().optional(),
   categories: z.array(z.number()).optional(),
 });
 
@@ -98,6 +99,7 @@ export default function CreateProductPage() {
       is_active: true,
       is_featured: false,
       is_upcoming: false,
+      call_for_price: false,
       categories: [],
     },
   });
@@ -431,6 +433,7 @@ export default function CreateProductPage() {
         is_active: values.is_active ?? true,
         is_featured: values.is_featured ?? false,
         is_upcoming: values.is_upcoming ?? false,
+        call_for_price: values.call_for_price ?? false,
         categories:
           values.categories && values.categories.length > 0
             ? values.categories
@@ -1430,6 +1433,18 @@ export default function CreateProductPage() {
                   />
                   <label htmlFor="is_upcoming" className="text-sm font-medium">
                     Upcoming Product
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    {...register("call_for_price")}
+                    id="call_for_price"
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                  />
+                  <label htmlFor="call_for_price" className="text-sm font-medium">
+                    Call for Price
                   </label>
                 </div>
               </div>

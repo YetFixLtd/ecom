@@ -8,7 +8,9 @@ import { getImageUrl } from "@/lib/utils/images";
 import { addToCart } from "@/lib/apis/client/cart";
 import { checkVariantAvailability } from "@/lib/apis/client/products";
 import { getUserTokenFromCookies } from "@/lib/cookies";
+import { getPublicSettings } from "@/lib/apis/settings";
 import type { ClientProduct } from "@/types/client";
+import { Phone } from "lucide-react";
 
 interface ProductCardEnhancedProps {
   product: ClientProduct;
@@ -21,6 +23,7 @@ export default function ProductCardEnhanced({
   const [addingToCart, setAddingToCart] = useState(false);
   const [buyingNow, setBuyingNow] = useState(false);
   const [isStockout, setIsStockout] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState<string | null>(null);
 
   const imageUrl = getImageUrl(
     product.primary_image?.url || product.images?.[0]?.url
@@ -33,6 +36,28 @@ export default function ProductCardEnhanced({
   const comparePrice = product.variants?.find(
     (v) => v.compare_at_price && v.compare_at_price > v.price
   )?.compare_at_price;
+
+  useEffect(() => {
+    async function loadPhoneNumber() {
+      try {
+        const response = await getPublicSettings();
+        setPhoneNumber(response.data.call_for_price_phone || null);
+      } catch (error) {
+        console.error("Error loading phone number:", error);
+      }
+    }
+    if (product.call_for_price) {
+      loadPhoneNumber();
+    }
+  }, [product.call_for_price]);
+
+  const handleCallClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (phoneNumber) {
+      window.location.href = `tel:${phoneNumber}`;
+    }
+  };
 
   // Check stockout status on mount - only show stockout if ALL variants are out of stock
   useEffect(() => {
@@ -76,6 +101,12 @@ export default function ProductCardEnhanced({
     // Prevent orders for upcoming products
     if (product.is_upcoming) {
       alert("This is an upcoming product. Orders are not available at this time.");
+      return;
+    }
+
+    // Prevent orders for call for price products
+    if (product.call_for_price) {
+      alert("Please call for pricing information.");
       return;
     }
 
@@ -208,6 +239,12 @@ export default function ProductCardEnhanced({
       return;
     }
 
+    // Prevent orders for call for price products
+    if (product.call_for_price) {
+      alert("Please call for pricing information.");
+      return;
+    }
+
     // Get first available variant
     const variant = product.variants?.[0];
     if (!variant) {
@@ -334,6 +371,11 @@ export default function ProductCardEnhanced({
     >
       {/* Badges */}
       <div className="absolute top-2 right-2 z-20 flex flex-col gap-1">
+        {product.call_for_price && (
+          <span className="bg-red-500 text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg">
+            Call for Price
+          </span>
+        )}
         {product.is_upcoming && (
           <span className="bg-orange-500 text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg">
             Upcoming
@@ -344,7 +386,7 @@ export default function ProductCardEnhanced({
             Featured
           </span>
         )}
-        {isStockout && !product.is_upcoming && (
+        {isStockout && !product.is_upcoming && !product.call_for_price && (
           <span className="bg-red-600 text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg">
             Stockout
           </span>
@@ -382,7 +424,7 @@ export default function ProductCardEnhanced({
         </h3>
 
         {/* Price */}
-        {!product.is_upcoming && (
+        {!product.is_upcoming && !product.call_for_price && (
           <div className="flex flex-col gap-1 mb-2 pr-20">
             {comparePrice && comparePrice > price ? (
               <div className="flex flex-col gap-1">
@@ -408,15 +450,32 @@ export default function ProductCardEnhanced({
       </div>
 
       {/* Action Buttons */}
-      <div className="absolute bottom-4 right-4 flex gap-2 z-10 flex-wrap justify-end max-w-[calc(100%-2rem)]">
-        {/* Add to Cart Button */}
-        <button
-          onClick={handleAddToCart}
-          disabled={addingToCart || buyingNow || isStockout || product.is_upcoming}
-          className="bg-[#FFC107] text-black p-2 rounded-full hover:bg-[#FFD700] transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-          aria-label="Add to cart"
-          title={product.is_upcoming ? "Upcoming product - orders not available" : isStockout ? "Out of stock" : "Add to cart"}
-        >
+      <div className="absolute bottom-4 left-4 right-4 flex gap-2 z-10 flex-wrap items-center max-w-[calc(100%-2rem)]">
+        {/* Call for Price Button - Only show if enabled */}
+        {product.call_for_price && phoneNumber ? (
+          <button
+            onClick={handleCallClick}
+            className="bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-full px-3 py-2 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 flex-shrink-0 flex-1 min-w-0"
+          >
+            <div className="flex items-center gap-2">
+              <Phone className="h-4 w-4 flex-shrink-0" />
+              <div className="flex flex-col items-start min-w-0 flex-1">
+                <span className="text-xs font-semibold leading-tight whitespace-nowrap">Call for Price</span>
+                <span className="text-xs opacity-90 leading-tight truncate w-full">{phoneNumber}</span>
+              </div>
+            </div>
+          </button>
+        ) : (
+          <>
+            {/* Add to Cart Button - Only show if NOT call for price */}
+            {!product.call_for_price && (
+              <button
+                onClick={handleAddToCart}
+                disabled={addingToCart || buyingNow || isStockout || product.is_upcoming}
+                className="bg-[#FFC107] text-black p-2 rounded-full hover:bg-[#FFD700] transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                aria-label="Add to cart"
+                title={product.is_upcoming ? "Upcoming product - orders not available" : isStockout ? "Out of stock" : "Add to cart"}
+              >
           {addingToCart ? (
             <svg
               className="w-5 h-5 animate-spin"
@@ -452,43 +511,48 @@ export default function ProductCardEnhanced({
               />
             </svg>
           )}
-        </button>
+              </button>
+            )}
 
-        {/* Buy Now Button */}
-        <button
-          onClick={handleBuyNow}
-          disabled={addingToCart || buyingNow || isStockout || product.is_upcoming}
-          className="bg-[#DC2626] text-white px-3 sm:px-4 py-2 rounded-full hover:bg-[#B91C1C] transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-semibold whitespace-nowrap flex-shrink-0"
-          aria-label="Buy now"
-          title={product.is_upcoming ? "Upcoming product - orders not available" : isStockout ? "Out of stock" : "Buy now"}
-        >
-          {buyingNow ? (
-            <span className="flex items-center gap-1 sm:gap-2">
-              <svg
-                className="w-3 h-3 sm:w-4 sm:h-4 animate-spin"
-                fill="none"
-                viewBox="0 0 24 24"
+            {/* Buy Now Button - Only show if NOT call for price */}
+            {!product.call_for_price && (
+              <button
+                onClick={handleBuyNow}
+                disabled={addingToCart || buyingNow || isStockout || product.is_upcoming}
+                className="bg-[#DC2626] text-white px-3 sm:px-4 py-2 rounded-full hover:bg-[#B91C1C] transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-semibold whitespace-nowrap flex-shrink-0"
+                aria-label="Buy now"
+                title={product.is_upcoming ? "Upcoming product - orders not available" : isStockout ? "Out of stock" : "Buy now"}
               >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
-              <span className="hidden sm:inline">Processing...</span>
-            </span>
-          ) : (
-            "Buy Now"
-          )}
-        </button>
+                {buyingNow ? (
+                  <span className="flex items-center gap-1 sm:gap-2">
+                    <svg
+                      className="w-3 h-3 sm:w-4 sm:h-4 animate-spin"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    <span className="hidden sm:inline">Processing...</span>
+                  </span>
+                ) : (
+                  "Buy Now"
+                )}
+              </button>
+            )}
+          </>
+        )}
       </div>
     </Link>
   );

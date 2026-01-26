@@ -50,6 +50,7 @@ const schema = z.object({
   is_active: z.boolean().optional(),
   is_featured: z.boolean().optional(),
   is_upcoming: z.boolean().optional(),
+  call_for_price: z.boolean().optional(),
   categories: z.array(z.number()).optional(),
 });
 
@@ -287,6 +288,7 @@ export default function EditProductPage() {
           is_active: productData.is_active,
           is_featured: productData.is_featured ?? false,
           is_upcoming: productData.is_upcoming ?? false,
+          call_for_price: productData.call_for_price ?? false,
           categories: productData.categories?.map((cat) => cat.id) || [],
         });
 
@@ -474,6 +476,11 @@ export default function EditProductPage() {
           values.is_upcoming !== undefined
             ? values.is_upcoming
             : product?.is_upcoming ?? false,
+        // Always send call_for_price (boolean)
+        call_for_price:
+          values.call_for_price !== undefined
+            ? values.call_for_price
+            : product?.call_for_price ?? false,
         // Always send categories array (even if empty)
         categories:
           values.categories !== undefined
@@ -1557,6 +1564,21 @@ export default function EditProductPage() {
                     className="text-sm font-medium"
                   >
                     Upcoming Product
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    {...register("call_for_price")}
+                    id="call_for_price_edit"
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                  />
+                  <label
+                    htmlFor="call_for_price_edit"
+                    className="text-sm font-medium"
+                  >
+                    Call for Price
                   </label>
                 </div>
               </div>

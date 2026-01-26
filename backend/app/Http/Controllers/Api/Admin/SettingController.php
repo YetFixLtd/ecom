@@ -38,6 +38,7 @@ class SettingController extends Controller
         $validator = Validator::make($request->all(), [
             'site_name' => 'nullable|string|max:255',
             'site_description' => 'nullable|string',
+            'call_for_price_phone' => 'nullable|string|max:20',
             'logo' => 'nullable|image|mimes:jpg,jpeg,png,svg,webp|max:2048',
             'favicon' => 'nullable|image|mimes:jpg,jpeg,png,ico,svg|max:1024',
         ]);
@@ -88,6 +89,10 @@ class SettingController extends Controller
             Setting::set('site_description', $request->site_description, 'string', 'Site description');
         }
 
+        if ($request->has('call_for_price_phone')) {
+            Setting::set('call_for_price_phone', $request->call_for_price_phone, 'string', 'Phone number for call for price');
+        }
+
         // Check for delete flags
         if ($request->boolean('delete_logo')) {
             $oldLogo = Setting::get('site_logo_path');
@@ -112,6 +117,7 @@ class SettingController extends Controller
             'data' => [
                 'site_name' => Setting::get('site_name'),
                 'site_description' => Setting::get('site_description'),
+                'call_for_price_phone' => Setting::get('call_for_price_phone'),
                 'site_logo_url' => Setting::get('site_logo_url'),
                 'site_favicon_url' => Setting::get('site_favicon_url'),
             ],

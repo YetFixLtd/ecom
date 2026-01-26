@@ -4,8 +4,10 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { getImageUrl } from "@/lib/utils/images";
+import { getPublicSettings } from "@/lib/apis/settings";
 import type { ClientProduct } from "@/types/client";
 import { getProducts } from "@/lib/apis/client/products";
+import { Phone } from "lucide-react";
 
 interface HeroCarouselProps {
   products: ClientProduct[];
@@ -25,6 +27,8 @@ export default function HeroCarousel() {
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [products, setProducts] = useState<ClientProduct[]>([]);
+  const [phoneNumber, setPhoneNumber] = useState<string | null>(null);
+
   useEffect(() => {
     const fetchFeaturedProducts = async () => {
       try {
@@ -36,6 +40,24 @@ export default function HeroCarousel() {
     };
     fetchFeaturedProducts();
   }, []);
+
+  useEffect(() => {
+    async function loadPhoneNumber() {
+      try {
+        const response = await getPublicSettings();
+        setPhoneNumber(response.data.call_for_price_phone || null);
+      } catch (error) {
+        console.error("Error loading phone number:", error);
+      }
+    }
+    loadPhoneNumber();
+  }, []);
+
+  const handleCallClick = () => {
+    if (phoneNumber) {
+      window.location.href = `tel:${phoneNumber}`;
+    }
+  };
   // Auto-rotate every 5 seconds
   useEffect(() => {
     if (!isAutoPlaying || products.length <= 1) return;
@@ -98,7 +120,22 @@ export default function HeroCarousel() {
                   </p>
                 )}
               </div>
-              {!currentProduct.is_upcoming && (
+              {currentProduct.call_for_price && phoneNumber ? (
+                <div>
+                  <button
+                    onClick={handleCallClick}
+                    className="group relative bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl px-6 py-4 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Phone className="h-5 w-5 md:h-6 md:w-6" />
+                      <div className="flex flex-col items-start">
+                        <span className="text-lg md:text-xl font-bold leading-tight">Call for Price</span>
+                        <span className="text-base md:text-lg opacity-90 leading-tight">{phoneNumber}</span>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              ) : !currentProduct.is_upcoming && !currentProduct.call_for_price ? (
                 <div className="flex items-baseline gap-1">
                   <span className="text-lg md:text-xl text-gray-600 font-medium">
                     {currentProduct.min_price &&
@@ -115,7 +152,7 @@ export default function HeroCarousel() {
                     ৳
                   </span>
                 </div>
-              )}
+              ) : null}
               <Link
                 href={`/products/${currentProduct.id}`}
                 className="inline-block bg-[#FFC107] text-black font-bold text-sm px-16 py-2 rounded-md hover:bg-[#FFD700] transition-colors shadow-md"

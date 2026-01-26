@@ -61,7 +61,7 @@ class ProductStoreRequest extends ApiFormRequest
         }
 
         // Convert string booleans to actual booleans for validation
-        $booleanFields = ['is_active', 'is_featured', 'is_upcoming'];
+        $booleanFields = ['is_active', 'is_featured', 'is_upcoming', 'call_for_price'];
         foreach ($booleanFields as $field) {
             if ($this->has($field)) {
                 $value = $this->input($field);
@@ -99,6 +99,7 @@ class ProductStoreRequest extends ApiFormRequest
             'height_mm' => ['nullable', 'integer', 'min:0'],
             'is_featured' => ['nullable', 'boolean'],
             'is_upcoming' => ['nullable', 'boolean'],
+            'call_for_price' => ['nullable', 'boolean'],
             'is_active' => ['nullable', 'boolean'],
             'seo_title' => ['nullable', 'string', 'max:191'],
             'seo_description' => ['nullable', 'string', 'max:255'],

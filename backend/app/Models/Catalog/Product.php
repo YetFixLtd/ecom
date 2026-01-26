@@ -39,6 +39,7 @@ class Product extends Model
         'height_mm',
         'is_featured',
         'is_upcoming',
+        'call_for_price',
         'is_active',
         'seo_title',
         'seo_description',
@@ -59,6 +60,7 @@ class Product extends Model
             'height_mm' => 'integer',
             'is_featured' => 'boolean',
             'is_upcoming' => 'boolean',
+            'call_for_price' => 'boolean',
             'is_active' => 'boolean',
             'sort_order' => 'integer',
         ];

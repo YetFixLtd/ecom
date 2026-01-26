@@ -24,6 +24,7 @@ export interface Settings {
   site_description?: string;
   site_logo_url?: string;
   site_favicon_url?: string;
+  call_for_price_phone?: string;
 }
 
 export interface AdminSettings extends Settings {
@@ -34,6 +35,7 @@ export interface AdminSettings extends Settings {
 export interface UpdateSettingsData {
   site_name?: string;
   site_description?: string;
+  call_for_price_phone?: string;
   logo?: File;
   favicon?: File;
   delete_logo?: boolean;
@@ -81,6 +83,9 @@ export async function updateSettings(
   }
   if (data.site_description !== undefined) {
     formData.append("site_description", data.site_description);
+  }
+  if (data.call_for_price_phone !== undefined) {
+    formData.append("call_for_price_phone", data.call_for_price_phone);
   }
 
   // Append files

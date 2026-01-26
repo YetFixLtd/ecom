@@ -88,6 +88,7 @@ class ProductResource extends JsonResource
             }),
             'is_featured' => $this->is_featured,
             'is_upcoming' => $this->is_upcoming,
+            'call_for_price' => $this->call_for_price,
             'created_at' => $this->created_at->toIso8601String(),
             'updated_at' => $this->updated_at->toIso8601String(),
         ];

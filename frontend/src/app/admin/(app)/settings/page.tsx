@@ -11,6 +11,7 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<AdminSettings>({});
   const [siteName, setSiteName] = useState("");
   const [siteDescription, setSiteDescription] = useState("");
+  const [callForPricePhone, setCallForPricePhone] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [faviconFile, setFaviconFile] = useState<File | null>(null);
@@ -35,6 +36,7 @@ export default function SettingsPage() {
       // Extract values from the settings object
       setSiteName(data.site_name?.value || "");
       setSiteDescription(data.site_description?.value || "");
+      setCallForPricePhone(data.call_for_price_phone?.value || "");
       
       if (data.site_logo_url?.value) {
         setLogoPreview(getImageUrl(data.site_logo_url.value));
@@ -100,6 +102,7 @@ export default function SettingsPage() {
       const updateData: any = {
         site_name: siteName,
         site_description: siteDescription,
+        call_for_price_phone: callForPricePhone,
       };
 
       if (logoFile) {
@@ -190,6 +193,22 @@ export default function SettingsPage() {
                 className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
                 placeholder="A brief description of your store"
               />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium">
+                Call for Price Phone Number
+              </label>
+              <input
+                type="tel"
+                value={callForPricePhone}
+                onChange={(e) => setCallForPricePhone(e.target.value)}
+                className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+                placeholder="+8801234567890"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Phone number to display when products have "Call for Price" enabled
+              </p>
             </div>
           </div>
         </div>

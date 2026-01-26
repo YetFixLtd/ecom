@@ -102,6 +102,7 @@ export interface ClientProduct {
   max_price: number | null;
   is_featured: boolean;
   is_upcoming?: boolean;
+  call_for_price?: boolean;
   created_at: string;
   updated_at: string;
 }

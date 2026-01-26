@@ -19,6 +19,7 @@ class SettingController extends Controller
                 'site_description' => Setting::get('site_description'),
                 'site_logo_url' => Setting::get('site_logo_url'),
                 'site_favicon_url' => Setting::get('site_favicon_url'),
+                'call_for_price_phone' => Setting::get('call_for_price_phone'),
             ],
         ]);
     }

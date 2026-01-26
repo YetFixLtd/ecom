@@ -9,7 +9,9 @@ import Footer from "@/components/client/Footer";
 import { getProduct, getProductVariants, checkVariantAvailability } from "@/lib/apis/client/products";
 import { addToCart } from "@/lib/apis/client/cart";
 import { getUserTokenFromCookies } from "@/lib/cookies";
+import { getPublicSettings } from "@/lib/apis/settings";
 import type { ClientProduct, ProductVariant } from "@/types/client";
+import { Phone } from "lucide-react";
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -28,11 +30,32 @@ export default function ProductDetailPage() {
   const [isStockout, setIsStockout] = useState(false);
   const [availableQuantity, setAvailableQuantity] = useState<number | null>(null);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState<string | null>(null);
 
   useEffect(() => {
     loadProduct();
     loadVariants();
   }, [productId]);
+
+  useEffect(() => {
+    async function loadPhoneNumber() {
+      try {
+        const response = await getPublicSettings();
+        setPhoneNumber(response.data.call_for_price_phone || null);
+      } catch (error) {
+        console.error("Error loading phone number:", error);
+      }
+    }
+    if (product?.call_for_price) {
+      loadPhoneNumber();
+    }
+  }, [product?.call_for_price]);
+
+  const handleCallClick = () => {
+    if (phoneNumber) {
+      window.location.href = `tel:${phoneNumber}`;
+    }
+  };
 
   async function loadProduct() {
     try {
@@ -301,6 +324,11 @@ export default function ProductDetailPage() {
                 <h1 className="text-3xl font-bold text-zinc-900">
                   {product.name}
                 </h1>
+                {product.call_for_price && (
+                  <span className="bg-red-500 text-white px-4 py-1.5 rounded-full text-sm font-semibold shadow-md">
+                    Call for Price
+                  </span>
+                )}
                 {product.is_upcoming && (
                   <span className="bg-orange-500 text-white px-4 py-1.5 rounded-full text-sm font-semibold shadow-md">
                     Upcoming
@@ -332,7 +360,22 @@ export default function ProductDetailPage() {
                 </div>
               )}
 
-              {!product.is_upcoming && (
+              {product.call_for_price && phoneNumber ? (
+                <div className="mb-6">
+                  <button
+                    onClick={handleCallClick}
+                    className="group relative bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl px-6 py-4 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Phone className="h-5 w-5" />
+                      <div className="flex flex-col items-start">
+                        <span className="text-lg font-bold leading-tight">Call for Price</span>
+                        <span className="text-base opacity-90 leading-tight">{phoneNumber}</span>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              ) : !product.is_upcoming && !product.call_for_price ? (
                 <div className="mb-6">
                   <div className="flex items-center gap-4 mb-2">
                     <span className="text-3xl font-bold text-zinc-900">
@@ -350,7 +393,7 @@ export default function ProductDetailPage() {
                     </span>
                   )}
                 </div>
-              )}
+              ) : null}
 
               {product.short_description && (
                 <p className="text-zinc-700 mb-6 whitespace-pre-wrap break-words">
@@ -380,7 +423,7 @@ export default function ProductDetailPage() {
                     {variants.map((variant) => (
                       <option key={variant.id} value={variant.id}>
                         {variant.sku}
-                        {!product.is_upcoming && ` - ৳${variant.price.toFixed(2)}`}
+                        {!product.is_upcoming && !product.call_for_price && ` - ৳${variant.price.toFixed(2)}`}
                         {variant.attributes &&
                           variant.attributes.length > 0 &&
                           ` (${variant.attributes
@@ -389,6 +432,15 @@ export default function ProductDetailPage() {
                       </option>
                     ))}
                   </select>
+                </div>
+              )}
+
+              {/* Call for Price Message */}
+              {product.call_for_price && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                  <p className="text-red-800 font-semibold text-sm">
+                    Please call for pricing information. Add to Cart and Buy Now options are not available for this product.
+                  </p>
                 </div>
               )}
 
@@ -402,7 +454,7 @@ export default function ProductDetailPage() {
               )}
 
               {/* Stockout Message */}
-              {isStockout && !product.is_upcoming && (
+              {isStockout && !product.is_upcoming && !product.call_for_price && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
                   <p className="text-red-800 font-semibold text-sm">
                     Stockout - This item is currently out of stock.
@@ -429,23 +481,24 @@ export default function ProductDetailPage() {
                         checkAvailability(selectedVariant, newQty);
                       }
                     }}
-                    className="w-20 px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-500"
+                    disabled={product.call_for_price}
+                    className="w-20 px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
                 <div className="flex gap-3">
                   <button
                     onClick={handleAddToCart}
-                    disabled={addingToCart || buyingNow || !selectedVariant || isStockout || checkingAvailability || product.is_upcoming}
+                    disabled={addingToCart || buyingNow || !selectedVariant || isStockout || checkingAvailability || product.is_upcoming || product.call_for_price}
                     className="flex-1 bg-zinc-900 text-white px-6 py-3 rounded-md hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {addingToCart ? "Adding..." : checkingAvailability ? "Checking..." : product.is_upcoming ? "Upcoming Product" : isStockout ? "Out of Stock" : "Add to Cart"}
+                    {addingToCart ? "Adding..." : checkingAvailability ? "Checking..." : product.call_for_price ? "Call for Price" : product.is_upcoming ? "Upcoming Product" : isStockout ? "Out of Stock" : "Add to Cart"}
                   </button>
                   <button
                     onClick={handleBuyNow}
-                    disabled={addingToCart || buyingNow || !selectedVariant || isStockout || checkingAvailability || product.is_upcoming}
+                    disabled={addingToCart || buyingNow || !selectedVariant || isStockout || checkingAvailability || product.is_upcoming || product.call_for_price}
                     className="flex-1 bg-red-600 text-white px-6 py-3 rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
                   >
-                    {buyingNow ? "Processing..." : checkingAvailability ? "Checking..." : product.is_upcoming ? "Upcoming Product" : isStockout ? "Out of Stock" : "Buy Now"}
+                    {buyingNow ? "Processing..." : checkingAvailability ? "Checking..." : product.call_for_price ? "Call for Price" : product.is_upcoming ? "Upcoming Product" : isStockout ? "Out of Stock" : "Buy Now"}
                   </button>
                 </div>
               </div>
