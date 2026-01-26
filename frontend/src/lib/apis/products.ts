@@ -133,6 +133,7 @@ export interface ProductListParams {
   stockout?: boolean;
   zero_price?: boolean;
   is_upcoming?: boolean;
+  call_for_price?: boolean;
 }
 
 export interface ProductListResponse {

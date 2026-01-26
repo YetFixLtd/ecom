@@ -75,6 +75,11 @@ class ProductController extends Controller
             $query->where('is_upcoming', $request->boolean('is_upcoming'));
         }
 
+        // Filter by call_for_price
+        if ($request->has('call_for_price')) {
+            $query->where('call_for_price', $request->boolean('call_for_price'));
+        }
+
         // Filter by stockout (products where all variants have 0 available stock)
         if ($request->boolean('stockout')) {
             $query->whereHas('variants', function ($variantQuery) {

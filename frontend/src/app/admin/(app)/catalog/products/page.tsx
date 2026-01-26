@@ -22,6 +22,7 @@ export default function ProductsPage() {
   const [stockoutFilter, setStockoutFilter] = useState<boolean>(false);
   const [zeroPriceFilter, setZeroPriceFilter] = useState<boolean>(false);
   const [upcomingFilter, setUpcomingFilter] = useState<boolean>(false);
+  const [callForPriceFilter, setCallForPriceFilter] = useState<boolean>(false);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -46,6 +47,7 @@ export default function ProductsPage() {
       if (stockoutFilter) params.stockout = true;
       if (zeroPriceFilter) params.zero_price = true;
       if (upcomingFilter) params.is_upcoming = true;
+      if (callForPriceFilter) params.call_for_price = true;
 
       const response = await getProducts(token, params);
       setProducts(response.data);
@@ -64,7 +66,7 @@ export default function ProductsPage() {
 
   useEffect(() => {
     fetchProducts();
-  }, [currentPage, brandFilter, categoryFilter, statusFilter, stockoutFilter, zeroPriceFilter, upcomingFilter]);
+  }, [currentPage, brandFilter, categoryFilter, statusFilter, stockoutFilter, zeroPriceFilter, upcomingFilter, callForPriceFilter]);
 
   const handleSearch = () => {
     setCurrentPage(1);
@@ -193,6 +195,22 @@ export default function ProductsPage() {
               Upcoming Products
             </label>
           </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="call-for-price"
+              checked={callForPriceFilter}
+              onChange={(e) => {
+                setCallForPriceFilter(e.target.checked);
+                setCurrentPage(1);
+              }}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <label htmlFor="call-for-price" className="text-sm font-medium text-gray-700">
+              Call for Price
+            </label>
+          </div>
         </div>
       </div>
 
@@ -288,6 +306,11 @@ export default function ProductsPage() {
                         {product.is_upcoming && (
                           <span className="rounded-full bg-purple-100 px-2 py-1 text-xs text-purple-700">
                             Upcoming
+                          </span>
+                        )}
+                        {product.call_for_price && (
+                          <span className="rounded-full bg-red-100 px-2 py-1 text-xs text-red-700">
+                            Call for Price
                           </span>
                         )}
                       </div>
