@@ -81,6 +81,12 @@ export default function ProductDetailPage() {
   async function handleAddToCart() {
     if (!selectedVariant) return;
 
+    // Prevent orders for upcoming products
+    if (product?.is_upcoming) {
+      alert("This is an upcoming product. Orders are not available at this time.");
+      return;
+    }
+
     // Check availability first
     try {
       const availability = await checkVariantAvailability(selectedVariant.id, quantity);
@@ -147,6 +153,12 @@ export default function ProductDetailPage() {
 
   async function handleBuyNow() {
     if (!selectedVariant) return;
+
+    // Prevent orders for upcoming products
+    if (product?.is_upcoming) {
+      alert("This is an upcoming product. Orders are not available at this time.");
+      return;
+    }
 
     // Check availability first
     try {
@@ -377,6 +389,15 @@ export default function ProductDetailPage() {
                 </div>
               )}
 
+              {/* Upcoming Product Message */}
+              {product.is_upcoming && (
+                <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-md">
+                  <p className="text-orange-800 font-semibold text-sm">
+                    This is an upcoming product. Orders are not available at this time.
+                  </p>
+                </div>
+              )}
+
               {/* Stockout Message */}
               {isStockout && !product.is_upcoming && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
@@ -411,17 +432,17 @@ export default function ProductDetailPage() {
                 <div className="flex gap-3">
                   <button
                     onClick={handleAddToCart}
-                    disabled={addingToCart || buyingNow || !selectedVariant || isStockout || checkingAvailability}
+                    disabled={addingToCart || buyingNow || !selectedVariant || isStockout || checkingAvailability || product.is_upcoming}
                     className="flex-1 bg-zinc-900 text-white px-6 py-3 rounded-md hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {addingToCart ? "Adding..." : checkingAvailability ? "Checking..." : isStockout ? "Out of Stock" : "Add to Cart"}
+                    {addingToCart ? "Adding..." : checkingAvailability ? "Checking..." : product.is_upcoming ? "Upcoming Product" : isStockout ? "Out of Stock" : "Add to Cart"}
                   </button>
                   <button
                     onClick={handleBuyNow}
-                    disabled={addingToCart || buyingNow || !selectedVariant || isStockout || checkingAvailability}
+                    disabled={addingToCart || buyingNow || !selectedVariant || isStockout || checkingAvailability || product.is_upcoming}
                     className="flex-1 bg-red-600 text-white px-6 py-3 rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
                   >
-                    {buyingNow ? "Processing..." : checkingAvailability ? "Checking..." : isStockout ? "Out of Stock" : "Buy Now"}
+                    {buyingNow ? "Processing..." : checkingAvailability ? "Checking..." : product.is_upcoming ? "Upcoming Product" : isStockout ? "Out of Stock" : "Buy Now"}
                   </button>
                 </div>
               </div>

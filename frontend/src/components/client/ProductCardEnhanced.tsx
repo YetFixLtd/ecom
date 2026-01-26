@@ -73,6 +73,12 @@ export default function ProductCardEnhanced({
     e.preventDefault();
     e.stopPropagation();
 
+    // Prevent orders for upcoming products
+    if (product.is_upcoming) {
+      alert("This is an upcoming product. Orders are not available at this time.");
+      return;
+    }
+
     // Get first available variant
     const variant = product.variants?.[0];
     if (!variant) {
@@ -195,6 +201,12 @@ export default function ProductCardEnhanced({
   async function handleBuyNow(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+
+    // Prevent orders for upcoming products
+    if (product.is_upcoming) {
+      alert("This is an upcoming product. Orders are not available at this time.");
+      return;
+    }
 
     // Get first available variant
     const variant = product.variants?.[0];
@@ -398,10 +410,10 @@ export default function ProductCardEnhanced({
         {/* Add to Cart Button */}
         <button
           onClick={handleAddToCart}
-          disabled={addingToCart || buyingNow || isStockout}
+          disabled={addingToCart || buyingNow || isStockout || product.is_upcoming}
           className="bg-[#FFC107] text-black p-2 rounded-full hover:bg-[#FFD700] transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
           aria-label="Add to cart"
-          title={isStockout ? "Out of stock" : "Add to cart"}
+          title={product.is_upcoming ? "Upcoming product - orders not available" : isStockout ? "Out of stock" : "Add to cart"}
         >
           {addingToCart ? (
             <svg
@@ -443,10 +455,10 @@ export default function ProductCardEnhanced({
         {/* Buy Now Button */}
         <button
           onClick={handleBuyNow}
-          disabled={addingToCart || buyingNow || isStockout}
+          disabled={addingToCart || buyingNow || isStockout || product.is_upcoming}
           className="bg-[#DC2626] text-white px-3 sm:px-4 py-2 rounded-full hover:bg-[#B91C1C] transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-semibold whitespace-nowrap flex-shrink-0"
           aria-label="Buy now"
-          title={isStockout ? "Out of stock" : "Buy now"}
+          title={product.is_upcoming ? "Upcoming product - orders not available" : isStockout ? "Out of stock" : "Buy now"}
         >
           {buyingNow ? (
             <span className="flex items-center gap-1 sm:gap-2">
