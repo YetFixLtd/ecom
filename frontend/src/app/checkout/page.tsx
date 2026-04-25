@@ -27,18 +27,6 @@ export default function CheckoutPage() {
   // Direct address entry (for guests)
   const [billingAddress, setBillingAddress] = useState<CreateAddressRequest>({
     name: "",
-    contact_name: "",
-    phone: "",
-    line1: "",
-    line2: "",
-    city: "",
-    state_region: "",
-    postal_code: "",
-    country_code: "BD",
-  });
-  const [shippingAddress, setShippingAddress] = useState<CreateAddressRequest>({
-    name: "",
-    contact_name: "",
     phone: "",
     line1: "",
     line2: "",
@@ -49,7 +37,6 @@ export default function CheckoutPage() {
   });
   const [useSameAddress, setUseSameAddress] = useState(true);
   const [guestEmail, setGuestEmail] = useState("");
-  const [guestName, setGuestName] = useState("");
 
   const [shippingMethodId, setShippingMethodId] = useState<number | null>(null);
   const [selectedShipping, setSelectedShipping] = useState<
@@ -80,7 +67,6 @@ export default function CheckoutPage() {
   const [newBillingAddress, setNewBillingAddress] =
     useState<CreateAddressRequest>({
       name: "",
-      contact_name: "",
       phone: "",
       line1: "",
       line2: "",
@@ -92,7 +78,6 @@ export default function CheckoutPage() {
   const [newShippingAddress, setNewShippingAddress] =
     useState<CreateAddressRequest>({
       name: "",
-      contact_name: "",
       phone: "",
       line1: "",
       line2: "",
@@ -112,12 +97,6 @@ export default function CheckoutPage() {
       localStorage.setItem("selectedShipping", selectedShipping);
     }
   }, [selectedShipping]);
-
-  useEffect(() => {
-    if (useSameAddress && isGuest) {
-      setShippingAddress(billingAddress);
-    }
-  }, [useSameAddress, billingAddress, isGuest]);
 
   async function loadData() {
     const token = await getUserTokenFromCookies();
@@ -247,7 +226,6 @@ export default function CheckoutPage() {
       });
       setNewBillingAddress({
         name: "",
-        contact_name: "",
         phone: "",
         line1: "",
         line2: "",
@@ -258,7 +236,6 @@ export default function CheckoutPage() {
       });
       setNewShippingAddress({
         name: "",
-        contact_name: "",
         phone: "",
         line1: "",
         line2: "",
@@ -273,22 +250,13 @@ export default function CheckoutPage() {
   }
 
   function validateGuestAddresses(): boolean {
-    if (!billingAddress.name || !billingAddress.line1 || !billingAddress.city) {
-      alert("Please fill in all required billing address fields");
-      return false;
-    }
-    if (!useSameAddress) {
-      if (
-        !shippingAddress.name ||
-        !shippingAddress.line1 ||
-        !shippingAddress.city
-      ) {
-        alert("Please fill in all required shipping address fields");
-        return false;
-      }
-    }
-    if (!guestEmail || !guestName) {
-      alert("Please provide your name and email");
+    if (
+      !billingAddress.name ||
+      !billingAddress.phone ||
+      !billingAddress.line1 ||
+      !billingAddress.city
+    ) {
+      alert("Please fill in all required delivery fields (name, phone, address, city)");
       return false;
     }
     return true;
@@ -331,12 +299,12 @@ export default function CheckoutPage() {
 
         const orderData = {
           billing_address: billingAddress,
-          shipping_address: useSameAddress ? billingAddress : shippingAddress,
+          shipping_address: billingAddress,
           shipping_method_id: selectedMethod?.id || undefined,
           shipping_cost: shippingCost,
           shipping_option: selectedShipping,
-          guest_email: guestEmail,
-          guest_name: guestName,
+          guest_email: guestEmail || undefined,
+          guest_name: billingAddress.name,
           cart_items: cartItems,
           currency: cart.currency || "BDT",
         };
@@ -471,48 +439,15 @@ export default function CheckoutPage() {
             <div className="lg:col-span-2 space-y-8">
               {isGuest ? (
                 <>
-                  {/* Guest Information */}
+                  {/* Guest Delivery Information */}
                   <div className="bg-white rounded-lg shadow-sm border border-zinc-200 p-6">
                     <h2 className="text-xl font-bold text-zinc-900 mb-4">
-                      Contact Information
+                      Delivery Information
                     </h2>
                     <div className="space-y-4">
                       <div>
                         <label className="block text-sm font-medium text-zinc-700 mb-1">
                           Full Name <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={guestName}
-                          onChange={(e) => setGuestName(e.target.value)}
-                          className="w-full px-3 py-2 border border-zinc-300 rounded-md"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-zinc-700 mb-1">
-                          Email <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="email"
-                          value={guestEmail}
-                          onChange={(e) => setGuestEmail(e.target.value)}
-                          className="w-full px-3 py-2 border border-zinc-300 rounded-md"
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Guest Billing Address */}
-                  <div className="bg-white rounded-lg shadow-sm border border-zinc-200 p-6">
-                    <h2 className="text-xl font-bold text-zinc-900 mb-4">
-                      Billing Address
-                    </h2>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-zinc-700 mb-1">
-                          Name <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="text"
@@ -529,23 +464,18 @@ export default function CheckoutPage() {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-zinc-700 mb-1">
-                          Contact Name
+                          Email <span className="text-zinc-400">(optional)</span>
                         </label>
                         <input
-                          type="text"
-                          value={billingAddress.contact_name || ""}
-                          onChange={(e) =>
-                            setBillingAddress({
-                              ...billingAddress,
-                              contact_name: e.target.value,
-                            })
-                          }
+                          type="email"
+                          value={guestEmail}
+                          onChange={(e) => setGuestEmail(e.target.value)}
                           className="w-full px-3 py-2 border border-zinc-300 rounded-md"
                         />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-zinc-700 mb-1">
-                          Phone
+                          Phone <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="tel"
@@ -557,6 +487,7 @@ export default function CheckoutPage() {
                             })
                           }
                           className="w-full px-3 py-2 border border-zinc-300 rounded-md"
+                          required
                         />
                       </div>
                       <div>
@@ -627,226 +558,25 @@ export default function CheckoutPage() {
                           />
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-zinc-700 mb-1">
-                            Postal Code
-                          </label>
-                          <input
-                            type="text"
-                            value={billingAddress.postal_code || ""}
-                            onChange={(e) =>
-                              setBillingAddress({
-                                ...billingAddress,
-                                postal_code: e.target.value,
-                              })
-                            }
-                            className="w-full px-3 py-2 border border-zinc-300 rounded-md"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-zinc-700 mb-1">
-                            Country Code <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={billingAddress.country_code}
-                            onChange={(e) =>
-                              setBillingAddress({
-                                ...billingAddress,
-                                country_code: e.target.value,
-                              })
-                            }
-                            className="w-full px-3 py-2 border border-zinc-300 rounded-md"
-                            required
-                          />
-                        </div>
+                      <div>
+                        <label className="block text-sm font-medium text-zinc-700 mb-1">
+                          Postal Code
+                        </label>
+                        <input
+                          type="text"
+                          value={billingAddress.postal_code || ""}
+                          onChange={(e) =>
+                            setBillingAddress({
+                              ...billingAddress,
+                              postal_code: e.target.value,
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-zinc-300 rounded-md"
+                        />
                       </div>
                     </div>
                   </div>
 
-                  {/* Guest Shipping Address */}
-                  <div className="bg-white rounded-lg shadow-sm border border-zinc-200 p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-xl font-bold text-zinc-900">
-                        Shipping Address
-                      </h2>
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={useSameAddress}
-                          onChange={(e) => setUseSameAddress(e.target.checked)}
-                          className="h-4 w-4"
-                        />
-                        <span className="text-sm text-zinc-700">
-                          Same as billing address
-                        </span>
-                      </label>
-                    </div>
-                    {!useSameAddress && (
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-zinc-700 mb-1">
-                            Name <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={shippingAddress.name}
-                            onChange={(e) =>
-                              setShippingAddress({
-                                ...shippingAddress,
-                                name: e.target.value,
-                              })
-                            }
-                            className="w-full px-3 py-2 border border-zinc-300 rounded-md"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-zinc-700 mb-1">
-                            Contact Name
-                          </label>
-                          <input
-                            type="text"
-                            value={shippingAddress.contact_name || ""}
-                            onChange={(e) =>
-                              setShippingAddress({
-                                ...shippingAddress,
-                                contact_name: e.target.value,
-                              })
-                            }
-                            className="w-full px-3 py-2 border border-zinc-300 rounded-md"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-zinc-700 mb-1">
-                            Phone
-                          </label>
-                          <input
-                            type="tel"
-                            value={shippingAddress.phone || ""}
-                            onChange={(e) =>
-                              setShippingAddress({
-                                ...shippingAddress,
-                                phone: e.target.value,
-                              })
-                            }
-                            className="w-full px-3 py-2 border border-zinc-300 rounded-md"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-zinc-700 mb-1">
-                            Address Line 1{" "}
-                            <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={shippingAddress.line1}
-                            onChange={(e) =>
-                              setShippingAddress({
-                                ...shippingAddress,
-                                line1: e.target.value,
-                              })
-                            }
-                            className="w-full px-3 py-2 border border-zinc-300 rounded-md"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-zinc-700 mb-1">
-                            Address Line 2
-                          </label>
-                          <input
-                            type="text"
-                            value={shippingAddress.line2 || ""}
-                            onChange={(e) =>
-                              setShippingAddress({
-                                ...shippingAddress,
-                                line2: e.target.value,
-                              })
-                            }
-                            className="w-full px-3 py-2 border border-zinc-300 rounded-md"
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-zinc-700 mb-1">
-                              City <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              type="text"
-                              value={shippingAddress.city}
-                              onChange={(e) =>
-                                setShippingAddress({
-                                  ...shippingAddress,
-                                  city: e.target.value,
-                                })
-                              }
-                              className="w-full px-3 py-2 border border-zinc-300 rounded-md"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-zinc-700 mb-1">
-                              State/Region
-                            </label>
-                            <input
-                              type="text"
-                              value={shippingAddress.state_region || ""}
-                              onChange={(e) =>
-                                setShippingAddress({
-                                  ...shippingAddress,
-                                  state_region: e.target.value,
-                                })
-                              }
-                              className="w-full px-3 py-2 border border-zinc-300 rounded-md"
-                            />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-zinc-700 mb-1">
-                              Postal Code
-                            </label>
-                            <input
-                              type="text"
-                              value={shippingAddress.postal_code || ""}
-                              onChange={(e) =>
-                                setShippingAddress({
-                                  ...shippingAddress,
-                                  postal_code: e.target.value,
-                                })
-                              }
-                              className="w-full px-3 py-2 border border-zinc-300 rounded-md"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-zinc-700 mb-1">
-                              Country Code{" "}
-                              <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              type="text"
-                              value={shippingAddress.country_code}
-                              onChange={(e) =>
-                                setShippingAddress({
-                                  ...shippingAddress,
-                                  country_code: e.target.value,
-                                })
-                              }
-                              className="w-full px-3 py-2 border border-zinc-300 rounded-md"
-                              required
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    {useSameAddress && (
-                      <p className="text-zinc-500 text-sm">
-                        Shipping address will be the same as billing address.
-                      </p>
-                    )}
-                  </div>
                 </>
               ) : (
                 <>
@@ -1501,9 +1231,8 @@ export default function CheckoutPage() {
                     submitting ||
                     !selectedShipping ||
                     (isGuest
-                      ? !guestEmail ||
-                        !guestName ||
-                        !billingAddress.name ||
+                      ? !billingAddress.name ||
+                        !billingAddress.phone ||
                         !billingAddress.line1 ||
                         !billingAddress.city
                       : !billingAddressId || !shippingAddressId)

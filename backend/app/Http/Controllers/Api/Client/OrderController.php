@@ -180,7 +180,7 @@ class OrderController extends Controller
                     'city' => $request->billing_address['city'],
                     'state_region' => $request->billing_address['state_region'] ?? null,
                     'postal_code' => $request->billing_address['postal_code'] ?? null,
-                    'country_code' => $request->billing_address['country_code'],
+                    'country_code' => $request->billing_address['country_code'] ?? 'BD',
                 ]);
 
                 $shippingAddress = Address::create([
@@ -193,7 +193,7 @@ class OrderController extends Controller
                     'city' => $request->shipping_address['city'],
                     'state_region' => $request->shipping_address['state_region'] ?? null,
                     'postal_code' => $request->shipping_address['postal_code'] ?? null,
-                    'country_code' => $request->shipping_address['country_code'],
+                    'country_code' => $request->shipping_address['country_code'] ?? 'BD',
                 ]);
 
                 // Calculate subtotal from cart items

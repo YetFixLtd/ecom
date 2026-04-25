@@ -6,7 +6,7 @@ import Link from "next/link";
 import { getImageUrl } from "@/lib/utils/images";
 import { getPublicSettings } from "@/lib/apis/settings";
 import type { ClientProduct } from "@/types/client";
-import { getProducts } from "@/lib/apis/client/products";
+import { getProducts, checkVariantAvailability } from "@/lib/apis/client/products";
 import { Phone } from "lucide-react";
 
 interface HeroCarouselProps {
@@ -28,6 +28,7 @@ export default function HeroCarousel() {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [products, setProducts] = useState<ClientProduct[]>([]);
   const [phoneNumber, setPhoneNumber] = useState<string | null>(null);
+  const [stockoutMap, setStockoutMap] = useState<Record<string | number, boolean>>({});
 
   useEffect(() => {
     const fetchFeaturedProducts = async () => {
@@ -52,6 +53,33 @@ export default function HeroCarousel() {
     }
     loadPhoneNumber();
   }, []);
+
+  useEffect(() => {
+    if (products.length === 0) return;
+    const checkAll = async () => {
+      const entries = await Promise.all(
+        products.map(async (p) => {
+          const variants = p.variants || [];
+          if (variants.length === 0) return [p.id, false] as const;
+          const checks = await Promise.allSettled(
+            variants.map((v) =>
+              v.id
+                ? checkVariantAvailability(v.id, 1)
+                : Promise.resolve({ available: false, stockout: false })
+            )
+          );
+          const allStockout = checks.every((r) =>
+            r.status === "fulfilled"
+              ? !r.value.available && r.value.stockout === true
+              : false
+          );
+          return [p.id, allStockout] as const;
+        })
+      );
+      setStockoutMap(Object.fromEntries(entries));
+    };
+    checkAll().catch((e) => console.error("Hero stockout check failed:", e));
+  }, [products]);
 
   const handleCallClick = () => {
     if (phoneNumber) {
@@ -95,9 +123,8 @@ export default function HeroCarousel() {
 
   return (
     <div className="relative bg-white overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="lg:ml-80">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center relative pl-4">
+      <div className="px-4 sm:px-6 lg:pl-[22rem] lg:pr-8 py-16">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center relative">
             {/* Left Side - Text Content with fade transition */}
             <div
               className={`space-y-8 transition-opacity duration-500 ${
@@ -135,7 +162,7 @@ export default function HeroCarousel() {
                     </div>
                   </button>
                 </div>
-              ) : !currentProduct.is_upcoming && !currentProduct.call_for_price ? (
+              ) : !currentProduct.is_upcoming && !currentProduct.call_for_price && !stockoutMap[currentProduct.id] ? (
                 <div className="flex items-baseline gap-1">
                   <span className="text-lg md:text-xl text-gray-600 font-medium">
                     {currentProduct.min_price &&
@@ -208,7 +235,6 @@ export default function HeroCarousel() {
                 ))}
               </div>
             )}
-          </div>
         </div>
       </div>
     </div>

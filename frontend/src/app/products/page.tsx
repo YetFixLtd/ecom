@@ -1,10 +1,14 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useMemo, useRef } from "react";
+import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import Header from "@/components/client/Header";
 import Footer from "@/components/client/Footer";
 import ProductCard from "@/components/client/ProductCard";
+import FilterSidebar from "@/components/client/products/FilterSidebar";
+import ActiveFilterChips from "@/components/client/products/ActiveFilterChips";
+import { findCategory } from "@/components/client/products/CategoryTree";
 import { getProducts } from "@/lib/apis/client/products";
 import { getCategories } from "@/lib/apis/client/categories";
 import { getBrands } from "@/lib/apis/client/brands";
@@ -23,37 +27,45 @@ function ProductsContent() {
     total: 0,
     per_page: 20,
   });
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
-  // Filter states
-  const [search, setSearch] = useState(searchParams.get("search") || "");
-  const [selectedCategory, setSelectedCategory] = useState(
-    searchParams.get("category") || ""
-  );
-  const [selectedBrand, setSelectedBrand] = useState(
-    searchParams.get("brand") || ""
-  );
-  const [minPrice, setMinPrice] = useState(searchParams.get("min_price") || "");
-  const [maxPrice, setMaxPrice] = useState(searchParams.get("max_price") || "");
-  const [featured, setFeatured] = useState(
-    searchParams.get("featured") === "true"
-  );
-  const [upcoming, setUpcoming] = useState(
-    searchParams.get("upcoming") === "true"
-  );
-  const [sort, setSort] = useState(searchParams.get("sort") || "created_at");
-  const [order, setOrder] = useState<"asc" | "desc">(
-    (searchParams.get("order") as "asc" | "desc") || "desc"
-  );
-  const [page, setPage] = useState(1);
+  const search = searchParams.get("search") || "";
+  const category = searchParams.get("category") || "";
+  const brand = searchParams.get("brand") || "";
+  const minPrice = searchParams.get("min_price") || "";
+  const maxPrice = searchParams.get("max_price") || "";
+  const featured = searchParams.get("featured") === "true";
+  const upcoming = searchParams.get("upcoming") === "true";
+  const sort = searchParams.get("sort") || "created_at";
+  const order = (searchParams.get("order") as "asc" | "desc") || "desc";
+  const perPage = parseInt(searchParams.get("per_page") || "20");
+  const page = parseInt(searchParams.get("page") || "1");
+
+  const [searchInput, setSearchInput] = useState(search);
+  useEffect(() => setSearchInput(search), [search]);
+
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (searchInput === search) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      updateParams({ search: searchInput || null, page: null });
+    }, 400);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput]);
 
   useEffect(() => {
     loadProducts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     page,
+    perPage,
     search,
-    selectedCategory,
-    selectedBrand,
+    category,
+    brand,
     minPrice,
     maxPrice,
     featured,
@@ -72,13 +84,13 @@ function ProductsContent() {
     try {
       const params: Record<string, string | number | boolean | undefined> = {
         page,
-        per_page: 20,
+        per_page: perPage,
         sort,
         order,
       };
       if (search) params.search = search;
-      if (selectedCategory) params.category = selectedCategory;
-      if (selectedBrand) params.brand = selectedBrand;
+      if (category) params.category = category;
+      if (brand) params.brand = brand;
       if (minPrice) params.min_price = parseFloat(minPrice);
       if (maxPrice) params.max_price = parseFloat(maxPrice);
       if (featured) params.featured = true;
@@ -103,44 +115,6 @@ function ProductsContent() {
     }
   }
 
-  function flattenCategories(tree: Category[]): Category[] {
-    const out: Category[] = [];
-    const walk = (nodes: Category[]) => {
-      for (const n of nodes) {
-        out.push(n);
-        if (n.children?.length) walk(n.children);
-      }
-    };
-    walk(tree);
-    return out;
-  }
-
-  function findCategory(tree: Category[], id: number): Category | null {
-    for (const n of tree) {
-      if (n.id === id) return n;
-      if (n.children?.length) {
-        const found = findCategory(n.children, id);
-        if (found) return found;
-      }
-    }
-    return null;
-  }
-
-  const flatCategories = flattenCategories(categories);
-  const currentCategory = selectedCategory
-    ? findCategory(categories, parseInt(selectedCategory))
-    : null;
-  const subcategories = currentCategory?.children ?? [];
-
-  function selectSubcategory(id: number | "") {
-    setSelectedCategory(id === "" ? "" : String(id));
-    setPage(1);
-    const params = new URLSearchParams(searchParams.toString());
-    if (id === "") params.delete("category");
-    else params.set("category", String(id));
-    router.push(`/products?${params.toString()}`);
-  }
-
   async function loadBrands() {
     try {
       const response = await getBrands();
@@ -150,240 +124,380 @@ function ProductsContent() {
     }
   }
 
-  function handleFilterChange() {
-    setPage(1);
-    const params = new URLSearchParams();
-    if (search) params.set("search", search);
-    if (selectedCategory) params.set("category", selectedCategory);
-    if (selectedBrand) params.set("brand", selectedBrand);
-    if (minPrice) params.set("min_price", minPrice);
-    if (maxPrice) params.set("max_price", maxPrice);
-    if (featured) params.set("featured", "true");
-    if (upcoming) params.set("upcoming", "true");
-    if (sort !== "created_at") params.set("sort", sort);
-    if (order !== "desc") params.set("order", order);
-    router.push(`/products?${params.toString()}`);
+  function updateParams(updates: Record<string, string | null>) {
+    const params = new URLSearchParams(searchParams.toString());
+    for (const [k, v] of Object.entries(updates)) {
+      if (v === null || v === "") params.delete(k);
+      else params.set(k, v);
+    }
+    const qs = params.toString();
+    router.replace(qs ? `/products?${qs}` : "/products");
   }
+
+  const currentCategory = useMemo(
+    () => (category ? findCategory(categories, parseInt(category)) : null),
+    [categories, category]
+  );
+  const subcategories = currentCategory?.children ?? [];
+
+  const filters = {
+    category,
+    brand,
+    minPrice,
+    maxPrice,
+    featured,
+    upcoming,
+  };
+
+  const activeFilters = { ...filters, search };
+
+  function handleFilterChange(next: Partial<typeof filters>) {
+    const updates: Record<string, string | null> = { page: null };
+    if ("category" in next) updates.category = next.category || null;
+    if ("brand" in next) updates.brand = next.brand || null;
+    if ("minPrice" in next) updates.min_price = next.minPrice || null;
+    if ("maxPrice" in next) updates.max_price = next.maxPrice || null;
+    if ("featured" in next) updates.featured = next.featured ? "true" : null;
+    if ("upcoming" in next) updates.upcoming = next.upcoming ? "true" : null;
+    updateParams(updates);
+  }
+
+  function clearChip(key: keyof typeof activeFilters | "price") {
+    if (key === "price") {
+      updateParams({ min_price: null, max_price: null, page: null });
+    } else if (key === "search") {
+      setSearchInput("");
+      updateParams({ search: null, page: null });
+    } else if (key === "featured" || key === "upcoming") {
+      updateParams({ [key]: null, page: null });
+    } else {
+      const apiKey = key === "minPrice" ? "min_price" : key === "maxPrice" ? "max_price" : key;
+      updateParams({ [apiKey]: null, page: null });
+    }
+  }
+
+  function clearAll() {
+    setSearchInput("");
+    router.replace("/products");
+  }
+
+  const hasFilters =
+    !!search ||
+    !!category ||
+    !!brand ||
+    !!minPrice ||
+    !!maxPrice ||
+    featured ||
+    upcoming;
+
+  const startIdx = (meta.current_page - 1) * meta.per_page + 1;
+  const endIdx = Math.min(
+    meta.current_page * meta.per_page,
+    meta.total
+  );
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      <main className="flex-1 py-8">
+      <main className="flex-1 py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h1 className="text-3xl font-bold text-zinc-900 mb-4">
-            {currentCategory ? currentCategory.name : "Products"}
+          {/* Breadcrumb */}
+          <nav className="text-sm text-zinc-500 mb-2">
+            <Link href="/" className="hover:text-zinc-900">
+              Home
+            </Link>
+            <span className="mx-2">/</span>
+            <Link href="/products" className="hover:text-zinc-900">
+              Products
+            </Link>
+            {currentCategory && (
+              <>
+                <span className="mx-2">/</span>
+                <span className="text-zinc-900">{currentCategory.name}</span>
+              </>
+            )}
+          </nav>
+
+          <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 mb-4">
+            {currentCategory ? currentCategory.name : "All Products"}
           </h1>
 
+          {/* Subcategory chips */}
           {subcategories.length > 0 && (
-            <div className="mb-6">
-              <h2 className="text-sm font-semibold text-zinc-700 mb-3">
-                Subcategories
-              </h2>
-              <div className="flex flex-wrap gap-2">
-                {subcategories.map((sub) => (
-                  <button
-                    key={sub.id}
-                    onClick={() => selectSubcategory(sub.id)}
-                    className="flex items-center gap-2 px-3 py-2 bg-white border border-zinc-200 rounded-md hover:border-zinc-400 hover:bg-zinc-50 transition-colors text-sm text-zinc-800"
-                  >
-                    {sub.image_url && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={sub.image_url}
-                        alt={sub.name}
-                        className="w-6 h-6 object-cover rounded"
-                      />
-                    )}
-                    <span>{sub.name}</span>
-                    {typeof sub.products_count === "number" && (
-                      <span className="text-xs text-zinc-500">
-                        ({sub.products_count})
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
+            <div className="mb-6 flex flex-wrap gap-2">
+              {subcategories.map((sub) => (
+                <button
+                  key={sub.id}
+                  onClick={() =>
+                    handleFilterChange({ category: String(sub.id) })
+                  }
+                  className="flex items-center gap-2 px-3 py-1.5 bg-white border border-zinc-200 rounded-full hover:border-zinc-400 hover:bg-zinc-50 transition-colors text-sm text-zinc-800"
+                >
+                  {sub.image_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={sub.image_url}
+                      alt={sub.name}
+                      className="w-5 h-5 object-cover rounded"
+                    />
+                  )}
+                  <span>{sub.name}</span>
+                  {typeof sub.products_count === "number" && (
+                    <span className="text-xs text-zinc-500">
+                      ({sub.products_count})
+                    </span>
+                  )}
+                </button>
+              ))}
             </div>
           )}
 
-          {/* Filters */}
-          <div className="bg-white rounded-lg shadow-sm border border-zinc-200 p-6 mb-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-2">
-                  Search
-                </label>
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && handleFilterChange()}
-                  placeholder="Search products..."
-                  className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-500"
+          <div className="flex flex-col lg:flex-row gap-6">
+            {/* Sidebar — desktop */}
+            <div className="hidden lg:block">
+              <div className="sticky top-4">
+                <FilterSidebar
+                  categories={categories}
+                  brands={brands}
+                  filters={filters}
+                  onChange={handleFilterChange}
+                  onClearAll={clearAll}
                 />
               </div>
-              {!currentCategory && (
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 mb-2">
-                    Category
-                  </label>
-                  <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-500"
-                  >
-                    <option value="">All Categories</option>
-                    {flatCategories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.path || cat.name}
-                      </option>
-                    ))}
-                  </select>
+            </div>
+
+            {/* Sidebar — mobile drawer */}
+            {mobileFiltersOpen && (
+              <div className="lg:hidden fixed inset-0 z-50 flex">
+                <div
+                  className="fixed inset-0 bg-black/40"
+                  onClick={() => setMobileFiltersOpen(false)}
+                />
+                <div className="relative bg-white w-80 max-w-full h-full overflow-y-auto p-4 ml-auto">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold">Filters</h3>
+                    <button
+                      type="button"
+                      onClick={() => setMobileFiltersOpen(false)}
+                      aria-label="Close"
+                      className="p-1 text-zinc-500 hover:text-zinc-900"
+                    >
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                  <FilterSidebar
+                    categories={categories}
+                    brands={brands}
+                    filters={filters}
+                    onChange={handleFilterChange}
+                    onClearAll={clearAll}
+                  />
                 </div>
-              )}
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-2">
-                  Brand
-                </label>
-                <select
-                  value={selectedBrand}
-                  onChange={(e) => setSelectedBrand(e.target.value)}
-                  className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-500"
-                >
-                  <option value="">All Brands</option>
-                  {brands.map((brand) => (
-                    <option key={brand.id} value={brand.id}>
-                      {brand.name}
-                    </option>
-                  ))}
-                </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-2">
-                  Sort By
-                </label>
+            )}
+
+            {/* Main column */}
+            <div className="flex-1 min-w-0">
+              {/* Toolbar */}
+              <div className="bg-white rounded-lg border border-zinc-200 p-3 mb-4 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setMobileFiltersOpen(true)}
+                  className="lg:hidden inline-flex items-center gap-1.5 px-3 py-1.5 border border-zinc-300 rounded-md text-sm hover:bg-zinc-50"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 4h18M6 12h12M10 20h4"
+                    />
+                  </svg>
+                  Filters
+                </button>
+
+                <div className="flex-1 min-w-[180px]">
+                  <input
+                    type="text"
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    placeholder="Search products..."
+                    className="w-full px-3 py-1.5 text-sm border border-zinc-300 rounded-md focus:outline-none focus:ring-1 focus:ring-zinc-500"
+                  />
+                </div>
+
+                <span className="text-xs text-zinc-500 hidden sm:block">
+                  {meta.total > 0
+                    ? `Showing ${startIdx}–${endIdx} of ${meta.total}`
+                    : "No results"}
+                </span>
+
                 <select
                   value={`${sort}-${order}`}
                   onChange={(e) => {
                     const [s, o] = e.target.value.split("-");
-                    setSort(s);
-                    setOrder(o as "asc" | "desc");
+                    updateParams({ sort: s, order: o, page: null });
                   }}
-                  className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-500"
+                  className="px-2 py-1.5 text-sm border border-zinc-300 rounded-md focus:outline-none focus:ring-1 focus:ring-zinc-500"
                 >
-                  <option value="created_at-desc">Newest First</option>
-                  <option value="created_at-asc">Oldest First</option>
+                  <option value="created_at-desc">Newest</option>
+                  <option value="created_at-asc">Oldest</option>
                   <option value="name-asc">Name A-Z</option>
                   <option value="name-desc">Name Z-A</option>
-                  <option value="price-asc">Price Low to High</option>
-                  <option value="price-desc">Price High to Low</option>
+                  <option value="price-asc">Price ↑</option>
+                  <option value="price-desc">Price ↓</option>
+                </select>
+
+                <select
+                  value={String(perPage)}
+                  onChange={(e) =>
+                    updateParams({ per_page: e.target.value, page: null })
+                  }
+                  className="px-2 py-1.5 text-sm border border-zinc-300 rounded-md focus:outline-none focus:ring-1 focus:ring-zinc-500"
+                >
+                  <option value="20">20</option>
+                  <option value="40">40</option>
+                  <option value="80">80</option>
                 </select>
               </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-2">
-                  Min Price
-                </label>
-                <input
-                  type="number"
-                  value={minPrice}
-                  onChange={(e) => setMinPrice(e.target.value)}
-                  placeholder="0"
-                  className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-2">
-                  Max Price
-                </label>
-                <input
-                  type="number"
-                  value={maxPrice}
-                  onChange={(e) => setMaxPrice(e.target.value)}
-                  placeholder="1000"
-                  className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-500"
-                />
-              </div>
-              <div className="flex items-end gap-4">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={featured}
-                    onChange={(e) => setFeatured(e.target.checked)}
-                    className="mr-2"
-                  />
-                  <span className="text-sm font-medium text-zinc-700">
-                    Featured Only
-                  </span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={upcoming}
-                    onChange={(e) => setUpcoming(e.target.checked)}
-                    className="mr-2"
-                  />
-                  <span className="text-sm font-medium text-zinc-700">
-                    Upcoming Only
-                  </span>
-                </label>
-              </div>
-            </div>
-            <button
-              onClick={handleFilterChange}
-              className="mt-4 bg-zinc-900 text-white px-6 py-2 rounded-md hover:bg-zinc-800 transition-colors"
-            >
-              Apply Filters
-            </button>
-          </div>
 
-          {/* Products Grid */}
-          {loading ? (
-            <div className="text-center py-12">
-              <p className="text-zinc-500">Loading products...</p>
-            </div>
-          ) : products.length > 0 ? (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
-                {products.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
+              <ActiveFilterChips
+                filters={activeFilters}
+                categories={categories}
+                brands={brands}
+                onClear={clearChip}
+              />
 
-              {/* Pagination */}
-              {meta.last_page > 1 && (
-                <div className="flex justify-center items-center space-x-2">
-                  <button
-                    onClick={() => setPage(Math.max(1, page - 1))}
-                    disabled={page === 1}
-                    className="px-4 py-2 border border-zinc-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-zinc-50"
-                  >
-                    Previous
-                  </button>
-                  <span className="text-zinc-700">
-                    Page {meta.current_page} of {meta.last_page}
-                  </span>
-                  <button
-                    onClick={() => setPage(Math.min(meta.last_page, page + 1))}
-                    disabled={page === meta.last_page}
-                    className="px-4 py-2 border border-zinc-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-zinc-50"
-                  >
-                    Next
-                  </button>
+              {/* Grid */}
+              {loading ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="bg-zinc-100 animate-pulse rounded-lg aspect-[3/4]"
+                    />
+                  ))}
+                </div>
+              ) : products.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+                    {products.map((product) => (
+                      <ProductCard key={product.id} product={product} />
+                    ))}
+                  </div>
+
+                  {meta.last_page > 1 && (
+                    <Pagination
+                      current={meta.current_page}
+                      last={meta.last_page}
+                      onPage={(p) => updateParams({ page: String(p) })}
+                    />
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-16 bg-white border border-zinc-200 rounded-lg">
+                  <p className="text-zinc-700 text-lg mb-2">No products found</p>
+                  {hasFilters && (
+                    <button
+                      onClick={clearAll}
+                      className="text-sm text-zinc-600 hover:text-zinc-900 underline"
+                    >
+                      Clear filters
+                    </button>
+                  )}
                 </div>
               )}
-            </>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-zinc-500 text-lg">No products found.</p>
             </div>
-          )}
+          </div>
         </div>
       </main>
       <Footer />
     </div>
   );
+}
+
+function Pagination({
+  current,
+  last,
+  onPage,
+}: {
+  current: number;
+  last: number;
+  onPage: (p: number) => void;
+}) {
+  const pages = pageWindow(current, last);
+  return (
+    <div className="flex justify-center items-center gap-1 flex-wrap">
+      <button
+        onClick={() => onPage(Math.max(1, current - 1))}
+        disabled={current === 1}
+        className="px-3 py-1.5 border border-zinc-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-zinc-50"
+      >
+        «
+      </button>
+      {pages.map((p, i) =>
+        p === "…" ? (
+          <span key={`e${i}`} className="px-2 text-zinc-500">
+            …
+          </span>
+        ) : (
+          <button
+            key={p}
+            onClick={() => onPage(p)}
+            className={`min-w-[36px] px-2 py-1.5 border rounded-md text-sm ${
+              p === current
+                ? "bg-zinc-900 text-white border-zinc-900"
+                : "border-zinc-300 hover:bg-zinc-50"
+            }`}
+          >
+            {p}
+          </button>
+        )
+      )}
+      <button
+        onClick={() => onPage(Math.min(last, current + 1))}
+        disabled={current === last}
+        className="px-3 py-1.5 border border-zinc-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-zinc-50"
+      >
+        »
+      </button>
+    </div>
+  );
+}
+
+function pageWindow(current: number, last: number): Array<number | "…"> {
+  const out: Array<number | "…"> = [];
+  const push = (n: number | "…") => out.push(n);
+  const window = 1;
+  for (let i = 1; i <= last; i++) {
+    if (
+      i === 1 ||
+      i === last ||
+      (i >= current - window && i <= current + window)
+    ) {
+      push(i);
+    } else if (out[out.length - 1] !== "…") {
+      push("…");
+    }
+  }
+  return out;
 }
 
 export default function ProductsPage() {

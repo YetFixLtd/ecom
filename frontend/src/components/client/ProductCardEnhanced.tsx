@@ -424,7 +424,7 @@ export default function ProductCardEnhanced({
         </h3>
 
         {/* Price */}
-        {!product.is_upcoming && !product.call_for_price && (
+        {!product.is_upcoming && !product.call_for_price && !isStockout && (
           <div className="flex flex-col gap-1 mb-2 pr-20">
             {comparePrice && comparePrice > price ? (
               <div className="flex flex-col gap-1">

@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getImageUrl } from "@/lib/utils/images";
 import { getPublicSettings } from "@/lib/apis/settings";
+import { checkVariantAvailability } from "@/lib/apis/client/products";
 import type { ClientProduct } from "@/types/client";
 import { Phone } from "lucide-react";
 
@@ -14,6 +15,37 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
   const [phoneNumber, setPhoneNumber] = useState<string | null>(null);
+  const [isStockout, setIsStockout] = useState(false);
+
+  useEffect(() => {
+    const checkStockout = async () => {
+      const variants = product.variants || [];
+      if (variants.length === 0) return;
+
+      try {
+        const availabilityChecks = await Promise.allSettled(
+          variants.map((variant) =>
+            variant.id
+              ? checkVariantAvailability(variant.id, 1)
+              : Promise.resolve({ available: false, stockout: false })
+          )
+        );
+
+        const allStockout = availabilityChecks.every((result) => {
+          if (result.status === "fulfilled") {
+            return !result.value.available && result.value.stockout === true;
+          }
+          return false;
+        });
+
+        setIsStockout(allStockout && variants.length > 0);
+      } catch (error) {
+        console.error("Error checking stockout status:", error);
+      }
+    };
+
+    checkStockout();
+  }, [product.variants]);
 
   useEffect(() => {
     async function loadPhoneNumber() {
@@ -101,12 +133,12 @@ export default function ProductCard({ product }: ProductCardProps) {
                 </div>
               </div>
             </button>
-          ) : !product.is_upcoming && !product.call_for_price ? (
+          ) : !product.is_upcoming && !product.call_for_price && !isStockout ? (
             <span className="text-lg font-bold text-zinc-900">
               {priceDisplay}
             </span>
           ) : null}
-          {product.min_price && product.max_price && !product.is_upcoming && !product.call_for_price && (
+          {product.min_price && product.max_price && !product.is_upcoming && !product.call_for_price && !isStockout && (
             <span className="text-sm text-zinc-500">
               {product.variants?.length || 0} variant
               {(product.variants?.length || 0) !== 1 ? "s" : ""}

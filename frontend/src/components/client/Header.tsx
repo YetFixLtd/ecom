@@ -5,11 +5,9 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { getUserTokenFromCookies } from "@/lib/cookies";
 import { getCart } from "@/lib/apis/client/cart";
-import { getCategories } from "@/lib/apis/client/categories";
 import { getPublicSettings } from "@/lib/apis/settings";
 import { logout } from "@/lib/apis/auth";
 import { getImageUrl } from "@/lib/utils/images";
-import type { Category } from "@/types/client";
 
 export default function Header() {
   const router = useRouter();
@@ -17,22 +15,10 @@ export default function Header() {
   const [cartTotal, setCartTotal] = useState(0);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [siteName, setSiteName] = useState("E-Commerce");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
-
-  async function loadCategories() {
-    try {
-      const response = await getCategories(true);
-      setCategories(response.data);
-    } catch (error) {
-      console.error("Error loading categories:", error);
-    }
-  }
 
   async function loadSettings() {
     try {
@@ -92,7 +78,6 @@ export default function Header() {
       }
     }
     loadCart();
-    loadCategories();
     loadSettings();
     
     // Listen for storage changes to update cart count when guest cart changes
@@ -126,7 +111,6 @@ export default function Header() {
     e.preventDefault();
     const params = new URLSearchParams();
     if (searchQuery) params.set("search", searchQuery);
-    if (selectedCategory) params.set("category", selectedCategory);
     router.push(`/products?${params.toString()}`);
   }
 
@@ -271,113 +255,8 @@ export default function Header() {
             onSubmit={handleSearch}
             className="flex-1 w-full sm:w-auto max-w-2xl sm:mx-4 lg:mx-8 relative"
           >
-            <div className="flex items-center bg-[#FFF9C4] rounded-md overflow-visible">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search for Products"
-                className="flex-1 px-2 sm:px-4 py-2 sm:py-3 bg-transparent border-none outline-none text-black placeholder:text-gray-600 text-sm sm:text-base"
-              />
-              <div className="relative z-[100]">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setShowCategoryDropdown(!showCategoryDropdown);
-                  }}
-                  className={`px-2 sm:px-4 py-2 sm:py-3 border-l border-[#E5E5E5] text-xs sm:text-sm transition-colors whitespace-nowrap ${
-                    selectedCategory
-                      ? "bg-[#FFC107] text-black font-medium"
-                      : "text-black hover:bg-[#FFC107]"
-                  }`}
-                >
-                  {selectedCategory ? (
-                    <>
-                      <span className="hidden sm:inline max-w-[120px] truncate">
-                        {categories.find(
-                          (cat) => cat.id.toString() === selectedCategory
-                        )?.name || "All Categories"}
-                      </span>
-                      <span className="sm:hidden max-w-[60px] truncate">
-                        {categories.find(
-                          (cat) => cat.id.toString() === selectedCategory
-                        )?.name || "All"}
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="hidden sm:inline">All Categories</span>
-                      <span className="sm:hidden">All</span>
-                    </>
-                  )}
-                  <svg
-                    className={`inline-block ml-1 w-3 h-3 sm:w-4 sm:h-4 transition-transform ${
-                      showCategoryDropdown ? "rotate-180" : ""
-                    }`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </button>
-                {showCategoryDropdown && (
-                  <div
-                    className="absolute right-0 top-full mt-1 w-48 sm:w-56 bg-white border-2 border-gray-400 rounded-md shadow-2xl z-[100] max-h-96 overflow-y-auto"
-                    style={{
-                      position: "absolute",
-                      top: "100%",
-                      right: "0",
-                      marginTop: "4px",
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedCategory("");
-                        setShowCategoryDropdown(false);
-                      }}
-                      className="w-full text-left px-4 py-2 hover:bg-[#F5F5F5] text-sm font-semibold border-b border-gray-200"
-                    >
-                      All Categories
-                    </button>
-                    {categories.length > 0 ? (
-                      categories.map((category) => (
-                        <button
-                          key={category.id}
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedCategory(category.id.toString());
-                            setShowCategoryDropdown(false);
-                          }}
-                          className="w-full text-left px-4 py-2 hover:bg-[#F5F5F5] text-sm"
-                        >
-                          {category.name}
-                        </button>
-                      ))
-                    ) : (
-                      <div className="px-4 py-2 text-sm text-gray-500">
-                        No categories
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-              <button
-                type="submit"
-                className="px-3 sm:px-6 py-2 sm:py-3 bg-[#FFC107] text-black hover:bg-[#FFD700] transition-colors"
-                aria-label="Search"
-              >
+            <div className="group flex items-center bg-white border border-gray-300 rounded-full shadow-sm transition-all duration-200 focus-within:border-[#FFC107] focus-within:shadow-[0_0_0_4px_rgba(255,193,7,0.18)] hover:shadow-md">
+              <span className="pl-4 pr-1 text-gray-400 group-focus-within:text-[#FFA000] transition-colors">
                 <svg
                   className="w-4 h-4 sm:w-5 sm:h-5"
                   fill="none"
@@ -391,6 +270,55 @@ export default function Header() {
                     d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                   />
                 </svg>
+              </span>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search for products, brands, categories…"
+                className="flex-1 min-w-0 px-2 sm:px-3 py-2 sm:py-2.5 bg-transparent border-none outline-none text-black placeholder:text-gray-400 text-sm sm:text-base"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="p-1.5 mr-1 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100 transition-colors"
+                  aria-label="Clear search"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              )}
+              <button
+                type="submit"
+                className="flex items-center gap-1.5 px-4 sm:px-5 py-2 sm:py-2.5 m-0.5 rounded-full bg-[#FFC107] text-black font-semibold text-sm hover:bg-[#FFD700] active:bg-[#FFA000] transition-colors"
+                aria-label="Search"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+                <span className="hidden sm:inline">Search</span>
               </button>
             </div>
           </form>
