@@ -96,11 +96,49 @@ function ProductsContent() {
 
   async function loadCategories() {
     try {
-      const response = await getCategories(true);
+      const response = await getCategories();
       setCategories(response.data);
     } catch (error) {
       console.error("Error loading categories:", error);
     }
+  }
+
+  function flattenCategories(tree: Category[]): Category[] {
+    const out: Category[] = [];
+    const walk = (nodes: Category[]) => {
+      for (const n of nodes) {
+        out.push(n);
+        if (n.children?.length) walk(n.children);
+      }
+    };
+    walk(tree);
+    return out;
+  }
+
+  function findCategory(tree: Category[], id: number): Category | null {
+    for (const n of tree) {
+      if (n.id === id) return n;
+      if (n.children?.length) {
+        const found = findCategory(n.children, id);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  const flatCategories = flattenCategories(categories);
+  const currentCategory = selectedCategory
+    ? findCategory(categories, parseInt(selectedCategory))
+    : null;
+  const subcategories = currentCategory?.children ?? [];
+
+  function selectSubcategory(id: number | "") {
+    setSelectedCategory(id === "" ? "" : String(id));
+    setPage(1);
+    const params = new URLSearchParams(searchParams.toString());
+    if (id === "") params.delete("category");
+    else params.set("category", String(id));
+    router.push(`/products?${params.toString()}`);
   }
 
   async function loadBrands() {
@@ -132,7 +170,41 @@ function ProductsContent() {
       <Header />
       <main className="flex-1 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h1 className="text-3xl font-bold text-zinc-900 mb-8">Products</h1>
+          <h1 className="text-3xl font-bold text-zinc-900 mb-4">
+            {currentCategory ? currentCategory.name : "Products"}
+          </h1>
+
+          {subcategories.length > 0 && (
+            <div className="mb-6">
+              <h2 className="text-sm font-semibold text-zinc-700 mb-3">
+                Subcategories
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                {subcategories.map((sub) => (
+                  <button
+                    key={sub.id}
+                    onClick={() => selectSubcategory(sub.id)}
+                    className="flex items-center gap-2 px-3 py-2 bg-white border border-zinc-200 rounded-md hover:border-zinc-400 hover:bg-zinc-50 transition-colors text-sm text-zinc-800"
+                  >
+                    {sub.image_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={sub.image_url}
+                        alt={sub.name}
+                        className="w-6 h-6 object-cover rounded"
+                      />
+                    )}
+                    <span>{sub.name}</span>
+                    {typeof sub.products_count === "number" && (
+                      <span className="text-xs text-zinc-500">
+                        ({sub.products_count})
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Filters */}
           <div className="bg-white rounded-lg shadow-sm border border-zinc-200 p-6 mb-8">
@@ -150,23 +222,25 @@ function ProductsContent() {
                   className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-500"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 mb-2">
-                  Category
-                </label>
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-500"
-                >
-                  <option value="">All Categories</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {!currentCategory && (
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 mb-2">
+                    Category
+                  </label>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-500"
+                  >
+                    <option value="">All Categories</option>
+                    {flatCategories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.path || cat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-zinc-700 mb-2">
                   Brand
