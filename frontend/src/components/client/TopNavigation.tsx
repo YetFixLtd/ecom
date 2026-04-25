@@ -123,6 +123,7 @@ function MobileCategoryItem({
 function CategorySubmenuItem({
   category,
   level = 0,
+  siblingIds,
   expandedCategories,
   openCategory,
   closeCategory,
@@ -130,8 +131,9 @@ function CategorySubmenuItem({
 }: {
   category: Category;
   level?: number;
+  siblingIds: number[];
   expandedCategories: Set<number>;
-  openCategory: (id: number) => void;
+  openCategory: (id: number, siblingIds: number[], isRoot?: boolean) => void;
   closeCategory: (id: number) => void;
   categoryRefs: React.MutableRefObject<Map<number, HTMLDivElement>>;
 }) {
@@ -178,7 +180,7 @@ function CategorySubmenuItem({
 
   const handleMouseEnter = () => {
     if (hasChildren) {
-      openCategory(category.id);
+      openCategory(category.id, siblingIds);
     }
   };
 
@@ -249,17 +251,21 @@ function CategorySubmenuItem({
               <div className="px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
                 {category.name}
               </div>
-              {category.children.map((child) => (
-                <CategorySubmenuItem
-                  key={child.id}
-                  category={child}
-                  level={level + 1}
-                  expandedCategories={expandedCategories}
-                  openCategory={openCategory}
-                  closeCategory={closeCategory}
-                  categoryRefs={categoryRefs}
-                />
-              ))}
+              {(() => {
+                const childIds = category.children.map((c) => c.id);
+                return category.children.map((child) => (
+                  <CategorySubmenuItem
+                    key={child.id}
+                    category={child}
+                    level={level + 1}
+                    siblingIds={childIds}
+                    expandedCategories={expandedCategories}
+                    openCategory={openCategory}
+                    closeCategory={closeCategory}
+                    categoryRefs={categoryRefs}
+                  />
+                ));
+              })()}
             </div>
           </div>
         )}
@@ -297,30 +303,20 @@ export default function TopNavigation() {
     });
   }
 
-  // Open any (nested) category without closing others
-  function openCategory(categoryId: number) {
+  // Open category, closing siblings at the same level. isRoot resets state.
+  function openCategory(
+    categoryId: number,
+    siblingIds: number[],
+    isRoot = false
+  ) {
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
       hoverTimeoutRef.current = null;
     }
     setExpandedCategories((prev) => {
+      if (isRoot) return new Set<number>([categoryId]);
       const newSet = new Set(prev);
-      newSet.add(categoryId);
-      return newSet;
-    });
-  }
-
-  // Open a ROOT category (in the main left list) and close other roots
-  function openRootCategory(categoryId: number) {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-      hoverTimeoutRef.current = null;
-    }
-
-    setExpandedCategories(() => {
-      const newSet = new Set<number>();
-      // Keep already-open nested categories that belong to this root will
-      // be re-opened as the user hovers; we only ensure a single root open.
+      for (const id of siblingIds) newSet.delete(id);
       newSet.add(categoryId);
       return newSet;
     });
@@ -479,7 +475,9 @@ export default function TopNavigation() {
                       Loading...
                     </div>
                   ) : (
-                    rootCategories.map((category) => {
+                    (() => {
+                      const rootSiblingIds = rootCategories.map((c) => c.id);
+                      return rootCategories.map((category) => {
                       // Use the nested children from the API response
                       const hasChildren =
                         category.children && category.children.length > 0;
@@ -495,7 +493,7 @@ export default function TopNavigation() {
                           className="relative border-b border-gray-100"
                           onMouseEnter={() => {
                             if (hasChildren) {
-                              openRootCategory(category.id);
+                              openCategory(category.id, rootSiblingIds, true);
                             }
                           }}
                           onMouseLeave={() => {
@@ -573,7 +571,11 @@ export default function TopNavigation() {
                                       }}
                                       onClick={(e) => e.stopPropagation()}
                                       onMouseEnter={() => {
-                                        openCategory(category.id);
+                                        openCategory(
+                                          category.id,
+                                          rootSiblingIds,
+                                          true
+                                        );
                                       }}
                                       onMouseLeave={() => {
                                         closeCategory(category.id);
@@ -583,19 +585,26 @@ export default function TopNavigation() {
                                         <div className="px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
                                           {category.name}
                                         </div>
-                                        {category.children.map((child) => (
-                                          <CategorySubmenuItem
-                                            key={child.id}
-                                            category={child}
-                                            level={0}
-                                            expandedCategories={
-                                              expandedCategories
-                                            }
-                                            openCategory={openCategory}
-                                            closeCategory={closeCategory}
-                                            categoryRefs={categoryRefs}
-                                          />
-                                        ))}
+                                        {(() => {
+                                          const childIds =
+                                            category.children!.map((c) => c.id);
+                                          return category.children!.map(
+                                            (child) => (
+                                              <CategorySubmenuItem
+                                                key={child.id}
+                                                category={child}
+                                                level={0}
+                                                siblingIds={childIds}
+                                                expandedCategories={
+                                                  expandedCategories
+                                                }
+                                                openCategory={openCategory}
+                                                closeCategory={closeCategory}
+                                                categoryRefs={categoryRefs}
+                                              />
+                                            )
+                                          );
+                                        })()}
                                       </div>
                                     </div>
                                   );
@@ -604,7 +613,8 @@ export default function TopNavigation() {
                             )}
                         </div>
                       );
-                    })
+                    });
+                    })()
                   )}
                 </div>
               </div>
