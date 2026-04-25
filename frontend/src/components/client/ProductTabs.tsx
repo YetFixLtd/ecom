@@ -16,7 +16,7 @@ export default function ProductTabs() {
   async function loadProducts() {
     setLoading(true);
     try {
-      const params = { featured: true, per_page: 8 };
+      const params = { featured: true, per_page: 10 };
       const response = await getProducts(params);
       setProducts(response.data);
     } catch (error) {
@@ -42,7 +42,7 @@ export default function ProductTabs() {
             <p className="text-gray-500 mt-4">Loading products...</p>
           </div>
         ) : products.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
             {products.map((product) => (
               <ProductCardEnhanced key={product.id} product={product} />
             ))}

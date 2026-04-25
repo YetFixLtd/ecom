@@ -87,7 +87,7 @@ export default function ProductDetailPage() {
 
   async function checkAvailability(variant: ProductVariant, qty: number) {
     if (!variant) return;
-    
+
     setCheckingAvailability(true);
     try {
       const availability = await checkVariantAvailability(variant.id, qty);
@@ -128,7 +128,7 @@ export default function ProductDetailPage() {
     }
 
     const token = await getUserTokenFromCookies();
-    
+
     setAddingToCart(true);
     try {
       if (token) {
@@ -201,7 +201,7 @@ export default function ProductDetailPage() {
     }
 
     const token = await getUserTokenFromCookies();
-    
+
     setBuyingNow(true);
     try {
       if (token) {
@@ -299,11 +299,10 @@ export default function ProductDetailPage() {
                     <button
                       key={index}
                       onClick={() => setSelectedImageIndex(index)}
-                      className={`aspect-square relative rounded-lg overflow-hidden border-2 ${
-                        selectedImageIndex === index
-                          ? "border-zinc-900"
-                          : "border-zinc-200"
-                      }`}
+                      className={`aspect-square relative rounded-lg overflow-hidden border-2 ${selectedImageIndex === index
+                        ? "border-zinc-900"
+                        : "border-zinc-200"
+                        }`}
                     >
                       <Image
                         src={getImageUrl(image.url)}
@@ -395,11 +394,25 @@ export default function ProductDetailPage() {
                 </div>
               ) : null}
 
-              {product.short_description && (
-                <p className="text-zinc-700 mb-6 whitespace-pre-wrap break-words">
-                  {product.short_description}
-                </p>
-              )}
+              <div className="mb-6">
+                {product.short_description && (
+                  <p className="text-zinc-700 whitespace-pre-wrap break-words mb-3">
+                    {product.short_description}
+                  </p>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    document
+                      .getElementById("product-description-section")
+                      ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                  }
+                  className="text-blue-600 hover:text-blue-800 underline text-sm font-medium"
+                >
+                  More Details
+                </button>
+              </div>
 
               {/* Variant Selection */}
               {variants.length > 1 && (
@@ -508,7 +521,7 @@ export default function ProductDetailPage() {
 
           {/* Product Description - Bottom of Page */}
           {product.description && (
-            <div className="mt-12 pt-8 border-t border-zinc-200 w-full">
+            <div id="product-description-section" className="mt-12 pt-8 border-t border-zinc-200 w-full scroll-mt-24">
               <div className="w-full">
                 <label className="mb-1 block text-sm font-medium text-zinc-900">
                   Description

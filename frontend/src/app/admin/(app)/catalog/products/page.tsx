@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Plus, Search, Pencil, Trash2, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
 import { getProducts, type Product, deleteProduct } from "@/lib/apis/products";
+import { getCategories, type Category } from "@/lib/apis/categories";
+import { getBrands, type Brand } from "@/lib/apis/brands";
 import { getAdminTokenFromCookies } from "@/lib/cookies";
 import { AxiosError } from "axios";
 import { getImageUrl } from "@/lib/utils/images";
@@ -18,6 +20,9 @@ export default function ProductsPage() {
   const [search, setSearch] = useState("");
   const [brandFilter, setBrandFilter] = useState<string>("");
   const [categoryFilter, setCategoryFilter] = useState<string>("");
+  const [parentCategoryFilter, setParentCategoryFilter] = useState<string>("");
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [stockoutFilter, setStockoutFilter] = useState<boolean>(false);
   const [zeroPriceFilter, setZeroPriceFilter] = useState<boolean>(false);
@@ -67,6 +72,29 @@ export default function ProductsPage() {
   useEffect(() => {
     fetchProducts();
   }, [currentPage, brandFilter, categoryFilter, statusFilter, stockoutFilter, zeroPriceFilter, upcomingFilter, callForPriceFilter]);
+
+  useEffect(() => {
+    const loadFilters = async () => {
+      const token = await getAdminTokenFromCookies();
+      if (!token) return;
+      try {
+        const [catRes, brandRes] = await Promise.all([
+          getCategories(token, { size: 500, include_all: true }),
+          getBrands(token, { size: 500 }),
+        ]);
+        setCategories(catRes.data);
+        setBrands(brandRes.data);
+      } catch {
+        // silent
+      }
+    };
+    loadFilters();
+  }, []);
+
+  const parentCategories = categories.filter((c) => c.parent_id === null);
+  const subcategories = parentCategoryFilter
+    ? categories.filter((c) => c.parent_id === Number(parentCategoryFilter))
+    : [];
 
   const handleSearch = () => {
     setCurrentPage(1);
@@ -143,6 +171,67 @@ export default function ProductsPage() {
               <option value="draft">Draft</option>
               <option value="published">Published</option>
               <option value="archived">Archived</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-4 md:grid-cols-3">
+          <div>
+            <label className="mb-1 block text-sm font-medium">Category</label>
+            <select
+              value={parentCategoryFilter}
+              onChange={(e) => {
+                setParentCategoryFilter(e.target.value);
+                setCategoryFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+            >
+              <option value="">All Categories</option>
+              {parentCategories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">Subcategory</label>
+            <select
+              value={categoryFilter === parentCategoryFilter ? "" : categoryFilter}
+              onChange={(e) => {
+                setCategoryFilter(e.target.value || parentCategoryFilter);
+                setCurrentPage(1);
+              }}
+              disabled={!parentCategoryFilter || subcategories.length === 0}
+              className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              <option value="">All Subcategories</option>
+              {subcategories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">Brand</label>
+            <select
+              value={brandFilter}
+              onChange={(e) => {
+                setBrandFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+            >
+              <option value="">All Brands</option>
+              {brands.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
             </select>
           </div>
         </div>

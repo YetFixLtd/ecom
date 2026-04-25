@@ -21,7 +21,7 @@ function ProductsContent() {
     current_page: 1,
     last_page: 1,
     total: 0,
-    per_page: 15,
+    per_page: 20,
   });
 
   // Filter states
@@ -72,7 +72,7 @@ function ProductsContent() {
     try {
       const params: Record<string, string | number | boolean | undefined> = {
         page,
-        per_page: 15,
+        per_page: 20,
         sort,
         order,
       };
@@ -271,7 +271,7 @@ function ProductsContent() {
             </div>
           ) : products.length > 0 ? (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
                 {products.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
