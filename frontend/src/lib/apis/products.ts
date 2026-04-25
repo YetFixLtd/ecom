@@ -290,7 +290,8 @@ export async function getProduct(
 export async function createProduct(
   token: string,
   data: CreateProductData,
-  images?: File[]
+  images?: File[],
+  options?: { primaryIndex?: number }
 ): Promise<{ data: Product }> {
   const formData = new FormData();
 
@@ -366,6 +367,10 @@ export async function createProduct(
     }
   }
 
+  if (options?.primaryIndex !== undefined && options.primaryIndex >= 0) {
+    formData.append("primary_index", String(options.primaryIndex));
+  }
+
   // Debug: Verify FormData has files
   const formDataFiles = Array.from(formData.entries())
     .filter(([key]) => key === "images[]")
@@ -411,7 +416,8 @@ export async function updateProduct(
   token: string,
   id: number,
   data: UpdateProductData,
-  images?: File[]
+  images?: File[],
+  options?: { primaryIndex?: number; existingImageIds?: number[] }
 ): Promise<{ data: Product }> {
   const formData = new FormData();
 
@@ -477,6 +483,19 @@ export async function updateProduct(
     validFiles.forEach((file) => {
       formData.append("images[]", file, file.name);
     });
+  }
+
+  // Reconcile flow: when reconcile_images=1 the backend rebuilds image rows
+  // from existing_image_ids[] (kept, in order) + images[] (new, appended).
+  if (options?.existingImageIds !== undefined) {
+    formData.append("reconcile_images", "1");
+    options.existingImageIds.forEach((id) => {
+      formData.append("existing_image_ids[]", String(id));
+    });
+  }
+
+  if (options?.primaryIndex !== undefined && options.primaryIndex >= 0) {
+    formData.append("primary_index", String(options.primaryIndex));
   }
 
   // Laravel handles FormData better with POST + method spoofing than PUT

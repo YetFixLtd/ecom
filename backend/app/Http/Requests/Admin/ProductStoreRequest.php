@@ -109,8 +109,8 @@ class ProductStoreRequest extends ApiFormRequest
             'categories' => ['nullable', 'array'],
             'categories.*' => ['integer', 'exists:categories,id'],
 
-            // Images (inline upload, up to 3 files)
-            'images' => ['nullable', 'array', 'max:3'],
+            // Images (inline upload)
+            'images' => ['nullable', 'array', 'max:50'],
             'images.*' => [
                 'required',
                 'file',
@@ -118,6 +118,7 @@ class ProductStoreRequest extends ApiFormRequest
                 'mimes:jpeg,jpg,png,webp',
                 'max:5120',
             ],
+            'primary_index' => ['nullable', 'integer', 'min:0'],
 
             // Variants (required for variant/bundle types)
             'variants' => ['required_if:product_type,variant', 'array'],

@@ -145,14 +145,11 @@ class ProductController extends Controller
                 $product->categories()->sync($categories);
             }
 
-            // Create images (inline upload up to 3 files)
+            // Create images (inline upload, no cap)
             if (!empty($images)) {
+                $primaryIndex = (int) ($data['primary_index'] ?? 0);
                 $position = 0;
                 foreach ($request->file('images', []) as $file) {
-                    if ($position >= 3) {
-                        break;
-                    }
-
                     $stored = $this->storeProductImageFiles($product->id, $file);
 
                     if ($stored) {
@@ -164,7 +161,7 @@ class ProductController extends Controller
                             'path_thumb' => $stored['thumb'],
                             'alt_text' => null,
                             'position' => $position,
-                            'is_primary' => $position === 0,
+                            'is_primary' => $position === $primaryIndex,
                         ]);
                         $position++;
                     }
@@ -375,19 +372,42 @@ class ProductController extends Controller
                 $product->categories()->sync($categories);
             }
 
-            // Replace images if new files provided
-            if ($request->hasFile('images')) {
-                // delete existing files and records
-                foreach ($product->images as $img) {
-                    $this->deleteProductImageFiles($img);
-                }
-                $product->images()->delete();
+            // Reconcile images: keep existing rows in given order, append new uploads,
+            // recompute primary. Only runs when client opted in by sending either
+            // existing_image_ids (even empty array signals "delete all existing") or new files.
+            $reconcile = $request->boolean('reconcile_images');
+            $hasNewFiles = $request->hasFile('images');
+            if ($reconcile || $hasNewFiles) {
+                $existingIds = $reconcile
+                    ? array_values(array_map('intval', (array) $request->input('existing_image_ids', [])))
+                    : $product->images->pluck('id')->all();
 
-                $position = 0;
-                foreach ($request->file('images', []) as $file) {
-                    if ($position >= 3) {
-                        break;
+                // Delete rows not in keep-list
+                foreach ($product->images as $img) {
+                    if (!in_array($img->id, $existingIds, true)) {
+                        $this->deleteProductImageFiles($img);
+                        $img->delete();
                     }
+                }
+
+                $primaryIndex = (int) ($data['primary_index'] ?? 0);
+                $position = 0;
+
+                // Reposition kept existing rows in the order client supplied
+                foreach ($existingIds as $id) {
+                    $row = $product->images()->find($id);
+                    if (!$row) {
+                        continue;
+                    }
+                    $row->update([
+                        'position' => $position,
+                        'is_primary' => $position === $primaryIndex,
+                    ]);
+                    $position++;
+                }
+
+                // Append new uploads
+                foreach ($request->file('images', []) as $file) {
                     $stored = $this->storeProductImageFiles($product->id, $file);
                     if ($stored) {
                         $product->images()->create([
@@ -397,7 +417,7 @@ class ProductController extends Controller
                             'path_thumb' => $stored['thumb'],
                             'alt_text' => null,
                             'position' => $position,
-                            'is_primary' => $position === 0,
+                            'is_primary' => $position === $primaryIndex,
                         ]);
                         $position++;
                     }

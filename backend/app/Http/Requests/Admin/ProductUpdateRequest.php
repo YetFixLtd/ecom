@@ -82,9 +82,13 @@ class ProductUpdateRequest extends ApiFormRequest
             'categories' => ['nullable', 'array'],
             'categories.*' => ['integer', 'exists:categories,id'],
 
-            // Images (replace set, up to 3 files)
-            'images' => ['nullable', 'array', 'max:3'],
+            // Images (reconcile: existing_image_ids preserved, images[] appended)
+            'images' => ['nullable', 'array', 'max:50'],
             'images.*' => ['file', 'image', 'mimes:jpeg,png,webp', 'max:5120'],
+            'reconcile_images' => ['nullable', 'boolean'],
+            'existing_image_ids' => ['nullable', 'array'],
+            'existing_image_ids.*' => ['integer', 'exists:product_images,id'],
+            'primary_index' => ['nullable', 'integer', 'min:0'],
 
             // Variants (for nested editing)
             'variants' => ['nullable', 'array'],
