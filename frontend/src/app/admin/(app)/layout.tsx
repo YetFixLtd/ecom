@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getAdminTokenFromCookies } from "@/lib/cookies";
 import { Sidebar } from "@/components/admin/Sidebar";
 import { Topbar } from "@/components/admin/Topbar";
+import { ToastProvider } from "@/components/ui/Toast";
 
 export const metadata: Metadata = {
   title: {
@@ -22,16 +23,18 @@ export default async function AdminAppLayout({
     redirect("/admin/login");
   }
   return (
-    <div className="min-h-screen bg-zinc-50">
-      <div className="flex min-h-screen">
-        <Sidebar />
-        <div className="flex flex-1 flex-col">
-          <Topbar />
-          <main className="p-6 md:p-8">
-            <div className="mx-auto w-full max-w-7xl">{children}</div>
-          </main>
+    <ToastProvider>
+      <div className="min-h-screen bg-zinc-50">
+        <div className="flex min-h-screen">
+          <Sidebar />
+          <div className="flex flex-1 flex-col">
+            <Topbar />
+            <main className="p-6 md:p-8">
+              <div className="mx-auto w-full max-w-7xl">{children}</div>
+            </main>
+          </div>
         </div>
       </div>
-    </div>
+    </ToastProvider>
   );
 }
