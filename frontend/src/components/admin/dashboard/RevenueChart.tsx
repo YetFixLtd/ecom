@@ -52,8 +52,8 @@ export function RevenueChart({ data }: RevenueChartProps) {
             style={{ fontSize: "12px" }}
           />
           <Tooltip
-            formatter={(value: number | undefined) =>
-              value !== undefined ? formatCurrency(value) : ""
+            formatter={(value) =>
+              typeof value === "number" ? formatCurrency(value) : ""
             }
             labelFormatter={(label) => formatDate(label)}
             contentStyle={{
